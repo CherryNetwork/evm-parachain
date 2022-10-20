@@ -1,16 +1,22 @@
 use super::{
-	AccountId, Balances, Call, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
-	WeightToFee, XcmpQueue,
+	AccountId, Balance, Balances, Call, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
+	Runtime, WeightToFee, XcmpQueue,
 };
+use codec::{Decode, Encode};
 use core::marker::PhantomData;
 use frame_support::{
 	log, match_types, parameter_types,
-	traits::{Everything, Nothing},
+	traits::{Everything, Get, Nothing},
 	weights::Weight,
+};
+use orml_traits::{
+	location::{RelativeReserveProvider, Reserve},
+	parameter_type_with_key,
 };
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
+use scale_info::TypeInfo;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
@@ -80,6 +86,9 @@ parameter_types! {
 	pub UnitWeightCost: Weight = 1_000_000_000;
 	pub const MaxInstructions: u32 = 100;
 }
+
+/// Xcm Weigher shared between multiple Xcm-related configs.
+pub type XcmWeigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 
 match_types! {
 	pub type ParentOrParentsExecutivePlurality: impl Contains<MultiLocation> = {
@@ -218,4 +227,75 @@ impl pallet_xcm::Config for Runtime {
 impl cumulus_pallet_xcm::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+// Our currencyId. We distinguish for now between SelfReserve, and Others, defined by their Id.
+#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+pub enum CurrencyId {
+	SelfReserve,
+	ForeignAsset(AssetId),
+	// Our local assets
+	LocalAssetReserve(AssetId),
+}
+
+parameter_types! {
+	pub const BaseXcmWeight: Weight = 1_000_000_000;
+	pub const MaxAssetsForTransfer: usize = 2;
+
+	// This is how we are going to detect whether the asset is a Reserve asset
+	// This however is the chain part only
+	pub SelfLocation: MultiLocation = MultiLocation::here();
+	// We need this to be able to catch when someone is trying to execute a non-
+	// cross-chain transfer in xtokens through the absolute path way
+	pub SelfLocationAbsolute: MultiLocation = MultiLocation {
+		parents:1,
+		interior: Junctions::X1(
+			Parachain(ParachainInfo::parachain_id().into())
+		)
+	};
+}
+
+parameter_type_with_key! {
+	pub ParachainMinFee: |_location: MultiLocation| -> Option<u128> {
+		Some(u128::MAX)
+	};
+}
+
+/// This struct offers uses RelativeReserveProvider to output relative views of multilocations
+/// However, additionally accepts a MultiLocation that aims at representing the chain part
+/// (parent: 1, Parachain(paraId)) of the absolute representation of our chain.
+/// If a token reserve matches against this absolute view, we return  Some(MultiLocation::here())
+/// This helps users by preventing errors when they try to transfer a token through xtokens
+/// to our chain (either inserting the relative or the absolute value).
+pub struct AbsoluteAndRelativeReserve<AbsoluteMultiLocation>(PhantomData<AbsoluteMultiLocation>);
+impl<AbsoluteMultiLocation> Reserve for AbsoluteAndRelativeReserve<AbsoluteMultiLocation>
+where
+	AbsoluteMultiLocation: Get<MultiLocation>,
+{
+	fn reserve(asset: &MultiAsset) -> Option<MultiLocation> {
+		RelativeReserveProvider::reserve(asset).map(|relative_reserve| {
+			if relative_reserve == AbsoluteMultiLocation::get() {
+				MultiLocation::here()
+			} else {
+				relative_reserve
+			}
+		})
+	}
+}
+
+impl orml_xtokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdConvert = ();
+	type AccountIdToMultiLocation = ();
+	type SelfLocation = SelfLocation;
+	type MinXcmFee = ParachainMinFee;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type MultiLocationsFilter = Everything;
+	type Weigher = XcmWeigher;
+	type BaseXcmWeight = BaseXcmWeight;
+	type LocationInverter = LocationInverter<Ancestry>;
+	type MaxAssetsForTransfer = MaxAssetsForTransfer;
+	type ReserveProvider = AbsoluteAndRelativeReserve<SelfLocationAbsolute>;
 }

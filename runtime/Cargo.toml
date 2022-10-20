@@ -75,6 +75,10 @@ cumulus-primitives-utility = { git = "https://github.com/paritytech/cumulus", br
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.27", default-features = false }
 parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.27", default-features = false }
 
+# orml
+orml-xtokens = { path = "../pallets/xtokens", default-features = false }
+orml-traits = { path = "../orml/traits", default-features = false }
+
 [features]
 default = [
 	"std",
@@ -96,6 +100,7 @@ std = [
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
+	"orml-xtokens/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
 	"pallet-balances/std",
