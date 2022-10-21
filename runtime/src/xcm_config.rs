@@ -6,7 +6,7 @@ use codec::{Decode, Encode};
 use core::marker::PhantomData;
 use frame_support::{
 	log, match_types, parameter_types,
-	traits::{Everything, Get, Nothing},
+	traits::{Everything, Get, Nothing, PalletInfoAccess},
 	weights::Weight,
 };
 use orml_traits::{
@@ -19,19 +19,30 @@ use polkadot_runtime_common::impls::ToAuthor;
 use scale_info::TypeInfo;
 use xcm::latest::prelude::*;
 use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
+	AccountKey20Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
 	EnsureXcmOrigin, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentIsPreset,
 	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	SignedAccountKey20AsNative, SovereignSignedViaLocation, TakeWeightCredit,
 	UsingComponents,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
+use xcm_primitives::SignedToAccountId20;
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Any;
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+	// Self Reserve location, defines the multilocation identifiying the self-reserve currency
+	// This is used to match it also against our Balances pallet when we receive such
+	// a MultiLocation: (Self Balances pallet index)
+	// We use the RELATIVE multilocation
+	pub SelfReserve: MultiLocation = MultiLocation {
+		parents:0,
+		interior: Junctions::X1(
+			PalletInstance(<Balances as PalletInfoAccess>::index() as u8)
+		)
+	};
 }
 
 /// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
@@ -42,8 +53,8 @@ pub type LocationToAccountId = (
 	ParentIsPreset<AccountId>,
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
-	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
-	AccountId32Aliases<RelayNetwork, AccountId>,
+	// If we receive a MultiLocation of type AccountKey20, just generate a native account
+	AccountKey20Aliases<RelayNetwork, AccountId>,
 );
 
 /// Means for transacting assets on this chain.
@@ -52,7 +63,7 @@ pub type LocalAssetTransactor = CurrencyAdapter<
 	Balances,
 	// Use this currency when it is a fungible asset matching the given location or name:
 	IsConcrete<RelayLocation>,
-	// Do a simple punn to convert an AccountId32 MultiLocation into a native chain account ID:
+	// Do a simple punn to convert an AccountId20 MultiLocation into a native chain account ID:
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly):
 	AccountId,
@@ -74,9 +85,9 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	// Native converter for sibling Parachains; will convert to a `SiblingPara` origin when
 	// recognized.
 	SiblingParachainAsNative<cumulus_pallet_xcm::Origin, Origin>,
-	// Native signed account converter; this just converts an `AccountId32` origin into a normal
-	// `Origin::Signed` origin of the same 32-byte value.
-	SignedAccountId32AsNative<RelayNetwork, Origin>,
+	// Xcm Origins defined by a Multilocation of type AccountKey20 can be converted to a 20 byte-
+	// account local origin
+	SignedAccountKey20AsNative<RelayNetwork, Origin>,
 	// Xcm origins can be represented natively under the Xcm pallet's Xcm origin.
 	XcmPassthrough<Origin>,
 );
@@ -184,7 +195,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader =
-		UsingComponents<WeightToFee, RelayLocation, AccountId, Balances, ToAuthor<Runtime>>;
+		UsingComponents<WeightToFee, SelfReserve, AccountId, Balances, ToAuthor<Runtime>>;
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = PolkadotXcm;
 	type AssetClaims = PolkadotXcm;
@@ -192,7 +203,7 @@ impl xcm_executor::Config for XcmConfig {
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
-pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;
+pub type LocalOriginToLocation = SignedToAccountId20<Origin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution into the right message
 /// queues.
@@ -261,6 +272,17 @@ parameter_type_with_key! {
 	};
 }
 
+// Our AssetType. For now we only handle Xcm Assets
+#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+pub enum AssetType {
+	Xcm(MultiLocation),
+}
+impl Default for AssetType {
+	fn default() -> Self {
+		Self::Xcm(MultiLocation::here())
+	}
+}
+
 /// This struct offers uses RelativeReserveProvider to output relative views of multilocations
 /// However, additionally accepts a MultiLocation that aims at representing the chain part
 /// (parent: 1, Parachain(paraId)) of the absolute representation of our chain.
@@ -283,12 +305,30 @@ where
 	}
 }
 
+/// Instructs how to convert a 20 byte accountId into a MultiLocation
+pub struct AccountIdToMultiLocation<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<AccountId> sp_runtime::traits::Convert<AccountId, MultiLocation>
+	for AccountIdToMultiLocation<AccountId>
+where
+	AccountId: Into<[u8; 20]>,
+{
+	fn convert(account: AccountId) -> MultiLocation {
+		MultiLocation {
+			parents: 0,
+			interior: X1(AccountKey20 {
+				network: NetworkId::Any,
+				key: account.into(),
+			}),
+		}
+	}
+}
+
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = ();
-	type AccountIdToMultiLocation = ();
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
 	type SelfLocation = SelfLocation;
 	type MinXcmFee = ParachainMinFee;
 	type XcmExecutor = XcmExecutor<XcmConfig>;

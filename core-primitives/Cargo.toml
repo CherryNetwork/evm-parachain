@@ -1,0 +1,24 @@
+[package]
+name = "moonbeam-core-primitives"
+authors = [ "PureStake" ]
+edition = "2021"
+homepage = "https://moonbeam.network"
+license = "GPL-3.0-only"
+repository = "https://github.com/PureStake/moonbeam/"
+version = "0.1.1"
+
+[dependencies]
+account = { path = "../primitives/account", default-features = false }
+
+fp-self-contained = { git = "https://github.com/paritytech/frontier", branch = "polkadot-v0.9.27", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+
+[features]
+default = [ "std" ]
+std = [
+	"account/std",
+	"fp-self-contained/std",
+	"sp-core/std",
+	"sp-runtime/std",
+]

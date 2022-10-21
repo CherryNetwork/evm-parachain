@@ -79,11 +79,17 @@ parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "polk
 orml-xtokens = { path = "../pallets/xtokens", default-features = false }
 orml-traits = { path = "../orml/traits", default-features = false }
 
+# Moonbeam
+account = { path = "../primitives/account", default-features = false}
+xcm-primitives = { path = "../primitives/xcm", default-features = false }
+moonbeam-core-primitives = { path = "../core-primitives", default-features = false }
+
 [features]
 default = [
 	"std",
 ]
 std = [
+	"account/std",
 	"codec/std",
 	"log/std",
 	"scale-info/std",
@@ -100,6 +106,7 @@ std = [
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
+	"moonbeam-core-primitives/std",
 	"orml-xtokens/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
@@ -129,6 +136,7 @@ std = [
 	"sp-version/std",
 	"xcm-builder/std",
 	"xcm-executor/std",
+	"xcm-primitives/std",
 	"xcm/std",
 ]
 
