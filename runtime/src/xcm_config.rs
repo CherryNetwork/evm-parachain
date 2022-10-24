@@ -17,16 +17,16 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
 use scale_info::TypeInfo;
-use xcm::latest::prelude::*;
+use xcm::latest::{ NetworkId, prelude::* };
 use xcm_builder::{
-	AccountKey20Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
+	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
 	EnsureXcmOrigin, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentIsPreset,
 	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountKey20AsNative, SovereignSignedViaLocation, TakeWeightCredit,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 	UsingComponents,
 };
-use xcm_executor::{traits::ShouldExecute, XcmExecutor};
-use xcm_primitives::SignedToAccountId20;
+use xcm_executor::{traits::{ ShouldExecute}, XcmExecutor};
+// use xcm_primitives::SignedToAccountId20;
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
@@ -54,7 +54,7 @@ pub type LocationToAccountId = (
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// If we receive a MultiLocation of type AccountKey20, just generate a native account
-	AccountKey20Aliases<RelayNetwork, AccountId>,
+	AccountId32Aliases<RelayNetwork, AccountId>,
 );
 
 /// Means for transacting assets on this chain.
@@ -87,7 +87,7 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	SiblingParachainAsNative<cumulus_pallet_xcm::Origin, Origin>,
 	// Xcm Origins defined by a Multilocation of type AccountKey20 can be converted to a 20 byte-
 	// account local origin
-	SignedAccountKey20AsNative<RelayNetwork, Origin>,
+	SignedAccountId32AsNative<RelayNetwork, Origin>,
 	// Xcm origins can be represented natively under the Xcm pallet's Xcm origin.
 	XcmPassthrough<Origin>,
 );
@@ -203,7 +203,7 @@ impl xcm_executor::Config for XcmConfig {
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
-pub type LocalOriginToLocation = SignedToAccountId20<Origin, AccountId, RelayNetwork>;
+pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution into the right message
 /// queues.
@@ -310,14 +310,14 @@ pub struct AccountIdToMultiLocation<AccountId>(sp_std::marker::PhantomData<Accou
 impl<AccountId> sp_runtime::traits::Convert<AccountId, MultiLocation>
 	for AccountIdToMultiLocation<AccountId>
 where
-	AccountId: Into<[u8; 20]>,
+	AccountId: Into<[u8; 32]>,
 {
 	fn convert(account: AccountId) -> MultiLocation {
 		MultiLocation {
 			parents: 0,
-			interior: X1(AccountKey20 {
+			interior: X1(AccountId32 {
 				network: NetworkId::Any,
-				key: account.into(),
+				id: account.into(),
 			}),
 		}
 	}

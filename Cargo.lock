@@ -2108,7 +2108,6 @@ dependencies = [
  "fixed-hash",
  "impl-codec",
  "impl-rlp",
- "impl-serde",
  "scale-info",
  "tiny-keccak",
 ]
@@ -2127,7 +2126,6 @@ dependencies = [
  "rlp",
  "rlp-derive",
  "scale-info",
- "serde",
  "sha3 0.10.2",
  "triehash",
 ]
@@ -2142,7 +2140,6 @@ dependencies = [
  "fixed-hash",
  "impl-codec",
  "impl-rlp",
- "impl-serde",
  "primitive-types",
  "scale-info",
  "uint",
@@ -2342,20 +2339,6 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
-]
-
-[[package]]
-name = "fp-self-contained"
-version = "1.0.0-dev"
-source = "git+https://github.com/paritytech/frontier?branch=polkadot-v0.9.27#32f9c7eaf5aa550191c90e14476b145e5d7833d7"
-dependencies = [
- "ethereum",
- "frame-support",
- "parity-scale-codec",
- "parity-util-mem",
- "scale-info",
- "serde",
- "sp-runtime",
 ]
 
 [[package]]
@@ -4548,16 +4531,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "moonbeam-core-primitives"
-version = "0.1.1"
-dependencies = [
- "account",
- "fp-self-contained",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
 name = "more-asserts"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6057,7 +6030,6 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal",
  "log",
- "moonbeam-core-primitives",
  "orml-traits",
  "orml-xtokens",
  "pallet-aura",
@@ -6155,10 +6127,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c32561d248d352148124f036cac253a644685a21dc9fea383eb4907d7bd35a8f"
 dependencies = [
  "cfg-if 1.0.0",
- "ethereum-types",
  "hashbrown 0.12.3",
  "impl-trait-for-tuples",
- "lru 0.7.8",
  "parity-util-mem-derive",
  "parking_lot 0.12.1",
  "primitive-types",

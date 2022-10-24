@@ -7,9 +7,9 @@ use std::{sync::Arc, time::Duration};
 use jsonrpsee::RpcModule;
 
 use cumulus_client_cli::CollatorOptions;
-// Local Runtime Types
+// use moonbeam_core_primitives::{ AccountId, Balance, Hash, Index as Nonce };
 use parachain_template_runtime::{
-	opaque::Block, AccountId, Balance, Hash, Index as Nonce, RuntimeApi,
+	opaque::Block, AccountId, Balance, Hash, Index as Nonce, RuntimeApi
 };
 
 // Cumulus Imports
