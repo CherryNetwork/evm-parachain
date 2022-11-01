@@ -9,7 +9,7 @@ use jsonrpsee::RpcModule;
 use cumulus_client_cli::CollatorOptions;
 // use moonbeam_core_primitives::{ AccountId, Balance, Hash, Index as Nonce };
 use parachain_template_runtime::{
-	opaque::Block, AccountId, Balance, Hash, Index as Nonce, RuntimeApi
+	opaque::Block, AccountId, Balance, Hash, Index as Nonce, RuntimeApi,
 };
 
 // Cumulus Imports

@@ -13,19 +13,19 @@ use orml_traits::{
 	location::{RelativeReserveProvider, Reserve},
 	parameter_type_with_key,
 };
+use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
 use scale_info::TypeInfo;
-use xcm::latest::{ NetworkId, prelude::* };
+use xcm::latest::{prelude::*, NetworkId};
 use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
-	EnsureXcmOrigin, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentIsPreset,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
+	EnsureXcmOrigin, FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter,
+	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	UsingComponents,
 };
-use xcm_executor::{traits::{ ShouldExecute}, XcmExecutor};
+use xcm_executor::{traits::ShouldExecute, XcmExecutor};
 // use xcm_primitives::SignedToAccountId20;
 
 parameter_types! {
@@ -182,6 +182,25 @@ pub type Barrier = DenyThenTry<
 	),
 >;
 
+parameter_types! {
+	pub EvmTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+}
+
+pub struct ToTreasury;
+impl TakeRevenue for ToTreasury {
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset::ConcreteFungible { id, amount } = revenue {
+			if let Some(currency_id) = CurrencyIdConvert::convert(id) {
+				let _ = Currencies::deposit(currency_id, &EvmTreasuryAccount::get(), amount);
+			}
+		}
+	}
+}
+
+parameter_types! {
+	pub CherPerSecond: (Multilocation, u128) = (X1(Parent), cher_per_second());
+}
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -189,13 +208,12 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-	type IsReserve = NativeAsset;
+	type IsReserve = MultiNativeAsset;
 	type IsTeleporter = (); // Teleporting is disabled.
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type Trader =
-		UsingComponents<WeightToFee, SelfReserve, AccountId, Balances, ToAuthor<Runtime>>;
+	type Trader = FixedRateOfConcreteFungible<CherPerSecond, ToTreasury>;
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = PolkadotXcm;
 	type AssetClaims = PolkadotXcm;
@@ -315,10 +333,7 @@ where
 	fn convert(account: AccountId) -> MultiLocation {
 		MultiLocation {
 			parents: 0,
-			interior: X1(AccountId32 {
-				network: NetworkId::Any,
-				id: account.into(),
-			}),
+			interior: X1(AccountId32 { network: NetworkId::Any, id: account.into() }),
 		}
 	}
 }

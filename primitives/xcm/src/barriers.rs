@@ -59,20 +59,14 @@ impl<T: Contains<MultiLocation>> ShouldExecute for AllowTopLevelPaidExecutionDes
 		// Then BuyExecution
 		let i = iter.next().ok_or(())?;
 		match i {
-			BuyExecution {
-				weight_limit: Limited(ref mut weight),
-				..
-			} if *weight >= max_weight => {
+			BuyExecution { weight_limit: Limited(ref mut weight), .. } if *weight >= max_weight => {
 				*weight = max_weight;
 				Ok(())
-			}
-			BuyExecution {
-				ref mut weight_limit,
-				..
-			} if weight_limit == &Unlimited => {
+			},
+			BuyExecution { ref mut weight_limit, .. } if weight_limit == &Unlimited => {
 				*weight_limit = Limited(max_weight);
 				Ok(())
-			}
+			},
 			_ => Err(()),
 		}
 	}
