@@ -1,6 +1,6 @@
 use super::{
 	AccountId, Balance, Balances, Call, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, WeightToFee, XcmpQueue,
+	Runtime, XcmpQueue,
 };
 use codec::{Decode, Encode};
 use core::marker::PhantomData;
@@ -16,14 +16,15 @@ use orml_traits::{
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use polkadot_runtime_common::impls::ToAuthor;
+// use polkadot_runtime_common::impls::ToAuthor;
 use scale_info::TypeInfo;
 use xcm::latest::{prelude::*, NetworkId};
 use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
-	EnsureXcmOrigin, FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter,
+	EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
 	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	TakeRevenue,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
 // use xcm_primitives::SignedToAccountId20;
@@ -198,7 +199,7 @@ impl TakeRevenue for ToTreasury {
 }
 
 parameter_types! {
-	pub CherPerSecond: (Multilocation, u128) = (X1(Parent), cher_per_second());
+	pub CherPerSecond: (MultiLocation, u128) = (X1(Parent), cher_per_second());
 }
 
 pub struct XcmConfig;
@@ -213,7 +214,7 @@ impl xcm_executor::Config for XcmConfig {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type Trader = FixedRateOfConcreteFungible<CherPerSecond, ToTreasury>;
+	type Trader = FixedRateOfFungible<CherPerSecond, ToTreasury>;
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = PolkadotXcm;
 	type AssetClaims = PolkadotXcm;

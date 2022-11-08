@@ -6030,6 +6030,7 @@ dependencies = [
  "hex-literal",
  "log",
  "orml-traits",
+ "orml-xcm-support",
  "orml-xtokens",
  "pallet-aura",
  "pallet-authorship",
