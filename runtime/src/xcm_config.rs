@@ -1,13 +1,14 @@
 use crate::{
 	AccountId, Balance, Balances, Call, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, XcmpQueue,
+	Runtime, Currencies, XcmpQueue,
 };
 use codec::{Decode, Encode};
 use core::marker::PhantomData;
 use frame_support::{
 	log, match_types, parameter_types,
 	traits::{Everything, Get, Nothing, PalletInfoAccess},
-	weights::{Weight, constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND}}
+	weights::{Weight, constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND}},
+	PalletId
 };
 use sp_runtime::Perbill;
 use orml_traits::{
@@ -28,7 +29,7 @@ use xcm_builder::{
 	TakeWeightCredit,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
-use core_primitives::currency::{ CurrencyId, TokenSymbol, TokenInfo, CHER };
+use core_primitives::currency::{ CurrencyId, TokenInfo, CHER };
 // use xcm_primitives::SignedToAccountId20;
 
 /// The block saturation level. Fees will be updates based on this value.
@@ -208,6 +209,7 @@ pub type Barrier = DenyThenTry<
 >;
 
 parameter_types! {
+	pub const TreasuryPalletId: PalletId = PalletId(*b"evm/trsy");
 	pub EvmTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 

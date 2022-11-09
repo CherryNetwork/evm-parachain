@@ -27,7 +27,7 @@ use sp_version::RuntimeVersion;
 
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::Everything,
+	traits::{Contains, Everything},
 	weights::{
 		constants::WEIGHT_PER_SECOND, ConstantMultiplier, DispatchClass, Weight,
 		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -44,7 +44,10 @@ use frame_system::{
 // };
 pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 pub use sp_runtime::{MultiAddress, Perbill, Permill};
-use xcm_config::{XcmConfig, XcmOriginToTransactDispatchOrigin};
+use xcm_config::{XcmConfig, XcmOriginToTransactDispatchOrigin, EvmTreasuryAccount, TreasuryPalletId};
+use core_primitives::currency::{CurrencyId, TokenInfo, CHER};
+use orml_currencies::BasicCurrencyAdapter;
+use orml_traits::parameter_type_with_key;
 
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -70,6 +73,9 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 
 /// Balance of an account.
 pub type Balance = u128;
+
+/// Signed version of Balance
+pub type Amount = i128;
 
 /// Index of a transaction in the chain.
 pub type Index = u32;
@@ -352,6 +358,48 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CHER;
+}
+
+impl orml_currencies::Config for Runtime {
+	type MultiCurrency = Tokens;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+
+pub fn get_all_module_accounts() -> Vec<AccountId> {
+	vec![
+		TreasuryPalletId::get().into_account(),
+	]
+}
+
+pub struct DustRemovalWhitelist;
+impl Contains<AccountId> for DustRemovalWhitelist {
+	fn contains(a: &AccountId) -> bool {
+		get_all_module_accounts().contains(a)
+	}
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		0
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo =  ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = orml_tokens::TransferDust<Runtime, EvmTreasuryAccount>;
+	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = DustRemovalWhitelist;
+}
+
+parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
 	pub const OperationalFeeMultiplier: u8 = 5;
@@ -494,7 +542,11 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin, Config} = 31,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 32,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
+		
+		// ORML
 		XTokens: orml_xtokens::{Pallet, Call, Storage, Event<T>} = 34,
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 35,
+		Currencies: orml_currencies::{Pallet, Call} = 36,
 
 		// // Template
 		// TemplatePallet: pallet_template::{Pallet, Call, Storage, Event<T>}  = 40,
