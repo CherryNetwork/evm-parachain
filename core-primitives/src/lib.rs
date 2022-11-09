@@ -24,6 +24,8 @@ use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 };
 
+pub mod currency;
+
 pub type Block = generic::Block<Header, OpaqueExtrinsic>;
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
 pub type Signature = EthereumSignature;

@@ -28,7 +28,7 @@ use xcm_builder::{
 	TakeWeightCredit,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
-use core_primitives::{ CurrencyId, TokenSymbol, currency };
+use core_primitives::currency::{ CurrencyId, TokenSymbol, TokenInfo, CHER };
 // use xcm_primitives::SignedToAccountId20;
 
 /// The block saturation level. Fees will be updates based on this value.
@@ -281,15 +281,6 @@ impl pallet_xcm::Config for Runtime {
 impl cumulus_pallet_xcm::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
-
-// Our currencyId. We distinguish for now between SelfReserve, and Others, defined by their Id.
-#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
-pub enum CurrencyId {
-	SelfReserve,
-	ForeignAsset(AssetId),
-	// Our local assets
-	LocalAssetReserve(AssetId),
 }
 
 parameter_types! {
