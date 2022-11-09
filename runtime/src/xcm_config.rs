@@ -1,5 +1,5 @@
-use super::{
-	AccountId, Balance, Balances, Call, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
+use crate::{
+	AccountId, Balance, Balances, Call, CurrencyId, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
 	Runtime, XcmpQueue,
 };
 use codec::{Decode, Encode};
@@ -7,8 +7,9 @@ use core::marker::PhantomData;
 use frame_support::{
 	log, match_types, parameter_types,
 	traits::{Everything, Get, Nothing, PalletInfoAccess},
-	weights::Weight,
+	weights::{Weight, constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND}}
 };
+use sp_runtime::Perbill;
 use orml_traits::{
 	location::{RelativeReserveProvider, Reserve},
 	parameter_type_with_key,
@@ -23,11 +24,33 @@ use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, CurrencyAdapter,
 	EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
 	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	TakeRevenue,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue,
+	TakeWeightCredit,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
 // use xcm_primitives::SignedToAccountId20;
+
+/// The block saturation level. Fees will be updates based on this value.
+pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
+
+// TODO: make those const fn
+pub fn dollar(currency_id: CurrencyId) -> Balance {
+	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
+}
+
+pub fn cent(currency_id: CurrencyId) -> Balance {
+	dollar(currency_id) / 100
+}
+
+fn base_tx_in_cher() -> Balance {
+    cent(CHER) / 10
+}
+
+pub fn cher_per_second() -> u128 {
+	let base_weight = Balance::from(ExtrinsicBaseWeight::get());
+	let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+	let cher_per_second = base_tx_per_second * base_tx_in_cher() / 100;
+}
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
