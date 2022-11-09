@@ -8,4 +8,5 @@ members = [
 	"runtime",
 	"orml/*",
 	"primitives/*",
+	"core-primitives"
 ]
