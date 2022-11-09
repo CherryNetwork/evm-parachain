@@ -1,5 +1,5 @@
 [package]
-name = "moonbeam-core-primitives"
+name = "core-primitives"
 authors = [ "PureStake" ]
 edition = "2021"
 homepage = "https://moonbeam.network"
@@ -9,16 +9,29 @@ version = "0.1.1"
 
 [dependencies]
 account = { path = "../primitives/account", default-features = false }
-
+bstringify = "0.1.2"
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
+serde = { version = "1.0.124", optional = true }
+num_enum = { version = "0.5.1", default-features = false }
 fp-self-contained = { git = "https://github.com/paritytech/frontier", branch = "polkadot-v0.9.27", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27", default-features = false }
+
+[dev-dependencies]
+sha3 = { version = "0.9.1" }
+serde_json = { version = "1.0.64" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.27" }
 
 [features]
 default = [ "std" ]
 std = [
 	"account/std",
+	"serde",
+	"codec/std",
+	"num_enum/std",
 	"fp-self-contained/std",
 	"sp-core/std",
 	"sp-runtime/std",
+	"sp-std/std",
 ]

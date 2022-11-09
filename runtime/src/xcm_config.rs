@@ -1,5 +1,5 @@
 use crate::{
-	AccountId, Balance, Balances, Call, CurrencyId, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
+	AccountId, Balance, Balances, Call, Event, Origin, ParachainInfo, ParachainSystem, PolkadotXcm,
 	Runtime, XcmpQueue,
 };
 use codec::{Decode, Encode};
@@ -28,6 +28,7 @@ use xcm_builder::{
 	TakeWeightCredit,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
+use core_primitives::{ CurrencyId, TokenSymbol, currency };
 // use xcm_primitives::SignedToAccountId20;
 
 /// The block saturation level. Fees will be updates based on this value.
