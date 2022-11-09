@@ -166,12 +166,17 @@ pub trait TokenInfo {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
-    Token(TokenSymbol)
-
+    Token(TokenSymbol),
+	// Erc20(EvmAddress),
 }
 
 impl CurrencyId {
 	pub fn is_token_currency_id(&self) -> bool {
 		matches!(self, CurrencyId::Token(_))
 	}
+
+	// pub fn is_erc20_currency_id(&self) -> bool {
+	// 	matches!(self, CurrencyId::Erc20(_))
+	// }
 }
+
