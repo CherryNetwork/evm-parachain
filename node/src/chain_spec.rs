@@ -1,6 +1,6 @@
 use cumulus_primitives_core::ParaId;
-// use moonbeam_core_primitives::{ AccountId, Signature };
-use parachain_template_runtime::{AccountId, AuraId, Signature, EXISTENTIAL_DEPOSIT};
+use parachain_template_runtime::{AccountId, AuraId, Signature};
+use parachain_template_runtime::constants::currency::EXISTENTIAL_DEPOSIT;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
