@@ -1,7 +1,8 @@
 use super::{
-	AccountId, Balance, Balances, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
+	AccountId, Balance, Balances, Convert, CurrencyId, Get, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
 	RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
+use codec::{Decode, Encode};
 use core::marker::PhantomData;
 use frame_support::{
 	log, match_types, parameter_types,
@@ -20,6 +21,8 @@ use xcm_builder::{
 	UsingComponents,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
+use sp_std::vec::Vec;
+use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
@@ -221,6 +224,100 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+pub struct CurrencyIdConvert;
+impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+		use cherry_evm_primitives::currency::TokenSymbol::*;
+		use CurrencyId::Token;
+		match id {
+			Token(CHER) => Some(MultiLocation::parent()),
+			Token(PARACHER) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+			}
+			// Erc20(address) if !is_system_contract(address) => {
+			// 	Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+			// }
+			_ => None,
+		}
+	}
+}
+impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		use cherry_evm_primitives::currency::TokenSymbol::*;
+		use CurrencyId::Token;
+
+		if location == MultiLocation::parent() {
+			return Some(Token(CHER));
+		}
+
+		match location {
+			MultiLocation {
+				parents,
+				interior: X2(Parachain(para_id), GeneralKey(key)),
+			} if parents == 1 => {
+				match (para_id, &key.into_inner()[..]) {
+					(id, key) if id == u32::from(ParachainInfo::get()) => {
+						// Acala
+						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+							// check `currency_id` is cross-chain asset
+							match currency_id {
+								Token(PARACHER) => Some(currency_id),
+								// Erc20(address) if !is_system_contract(address) => Some(currency_id),
+								_ => None,
+							}
+						} else {
+							// invalid general key
+							None
+						}
+					}
+					_ => None,
+				}
+			}
+			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
+			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => {
+				let key = &key.into_inner()[..];
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					Token(PARACHER) => Some(currency_id),
+					// Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					_ => None,
+				}
+			}
+			_ => None,
+		}
+	}
+}
+impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset {
+			id: Concrete(location), ..
+		} = asset
+		{
+			Self::convert(location)
+		} else {
+			None
+		}
+	}
+}
+
+// parameter_types! {
+// 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+// }
+
+// pub struct AccountIdToMultiLocation;
+// impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+// 	fn convert(account: AccountId) -> MultiLocation {
+// 		X1(AccountId32 {
+// 			network: NetworkId::Any,
+// 			id: account.into(),
+// 		})
+// 		.into()
+// 	}
+// }
+
 parameter_types! {
 	pub SelfLocation: MultiLocation = MultiLocation::here();
 	pub const BaseXcmWeight: XCMWeight = 100_000_000;
@@ -233,12 +330,22 @@ parameter_type_with_key! {
 	};
 }
 
+pub fn native_currency_location(para_id: u32, key: Vec<u8>) -> MultiLocation {
+	MultiLocation::new(
+		1,
+		X2(
+			Parachain(para_id),
+			GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key, None)),
+		),
+	)
+}
+
 impl orml_xtokens::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
-	type CurrencyId = ();
+	type CurrencyId = CurrencyId;
 	type AccountIdToMultiLocation = ();
-	type CurrencyIdConvert = ();
+	type CurrencyIdConvert = CurrencyIdConvert;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type SelfLocation = SelfLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;

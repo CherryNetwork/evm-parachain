@@ -862,6 +862,7 @@ version = "0.1.0"
 dependencies = [
  "bstringify",
  "parity-scale-codec",
+ "scale-info",
  "serde",
  "sp-runtime",
  "sp-std",
