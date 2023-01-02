@@ -303,23 +303,19 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-// parameter_types! {
-// 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
-// }
-
-// pub struct AccountIdToMultiLocation;
-// impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-// 	fn convert(account: AccountId) -> MultiLocation {
-// 		X1(AccountId32 {
-// 			network: NetworkId::Any,
-// 			id: account.into(),
-// 		})
-// 		.into()
-// 	}
-// }
+pub struct AccountIdToMultiLocation;
+impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> MultiLocation {
+		X1(AccountId32 {
+			network: NetworkId::Any,
+			id: account.into(),
+		})
+		.into()
+	}
+}
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::here();
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 	pub const BaseXcmWeight: XCMWeight = 100_000_000;
 	pub const MaxAssetsForTransfer: usize = 2;
 }
@@ -344,7 +340,7 @@ impl orml_xtokens::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type AccountIdToMultiLocation = ();
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type CurrencyIdConvert = CurrencyIdConvert;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type SelfLocation = SelfLocation;
