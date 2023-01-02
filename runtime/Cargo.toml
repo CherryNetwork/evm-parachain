@@ -22,6 +22,7 @@ scale-info = { version = "2.2.0", default-features = false, features = ["derive"
 smallvec = "1.10.0"
 
 # Local
+cherry-evm-primitives = { path = "../primitives", default-features = false }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
@@ -82,6 +83,7 @@ default = [
 	"std",
 ]
 std = [
+	"cherry-evm-primitives/std",
 	"codec/std",
 	"log/std",
 	"scale-info/std",

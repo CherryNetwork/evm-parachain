@@ -1,0 +1,21 @@
+[package]
+name = "cherry-evm-primitives"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bstringify = "0.1.2"
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
+serde = { version = "1.0.145", optional = true }
+
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+   "serde",
+   "codec/std",
+   "sp-runtime/std",
+   "sp-std/std",
+]
