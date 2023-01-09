@@ -78,6 +78,14 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.32", default-features = false }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.32", default-features = false }
 
+# Frontier
+pallet-evm = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30", default-features = false, features = [ "forbid-evm-reentrancy" ]}
+pallet-ethereum = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30", default-features = false, features = [ "forbid-evm-reentrancy" ]}
+pallet-evm-chain-id = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30", default-features = false }
+pallet-evm-precompile-modexp = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30", default-features = false }
+pallet-evm-precompile-sha3fips = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30", default-features = false }
+pallet-evm-precompile-simple = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30", default-features = false }
+
 [features]
 default = [
 	"std",
@@ -127,6 +135,11 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
+	"pallet-evm/std",
+	"pallet-ethereum/std",
+	"pallet-evm-chain-id/std",
+	"pallet-evm-precompile-simple/std",
+	"pallet-evm-precompile-sha3fips/std",
 ]
 
 runtime-benchmarks = [
@@ -143,6 +156,7 @@ runtime-benchmarks = [
 	"xcm-builder/runtime-benchmarks",
 	"cumulus-pallet-session-benchmarking/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
+	"pallet-evm/runtime-benchmarks",
 ]
 
 try-runtime = [
