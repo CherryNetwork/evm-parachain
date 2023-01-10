@@ -20,7 +20,7 @@
 
 use bstringify::bstringify;
 use codec::{Decode, Encode};
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{RuntimeDebug, app_crypto::sp_core};
 use sp_std::{
 	convert::{Into, TryFrom},
 	prelude::*,
@@ -29,6 +29,8 @@ use scale_info::TypeInfo;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+
+pub type EvmAddress = sp_core::H160;
 
 macro_rules! create_currency_id {
     ($(#[$meta:meta])*
@@ -130,7 +132,7 @@ pub trait TokenInfo {
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
    Token(TokenSymbol),
-	// Erc20(EvmAddress),
+	Erc20(EvmAddress),
 }
 
 impl CurrencyId {
@@ -138,7 +140,7 @@ impl CurrencyId {
 		matches!(self, CurrencyId::Token(_))
 	}
 
-	// pub fn is_erc20_currency_id(&self) -> bool {
-	// 	matches!(self, CurrencyId::Erc20(_))
-	// }
+	pub fn is_erc20_currency_id(&self) -> bool {
+		matches!(self, CurrencyId::Erc20(_))
+	}
 }
