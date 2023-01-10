@@ -1,29 +1,28 @@
 use super::{
-	AccountId, Balance, Balances, Convert, CurrencyId, Get, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
+	AccountId, Balance, Balances, Convert, CurrencyId, Get, ParachainInfo, ParachainSystem,
+	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 use codec::{Decode, Encode};
-use core::marker::PhantomData;
 use frame_support::{
-	log, match_types, parameter_types,
+	match_types, parameter_types,
 	traits::{Everything, Nothing},
 };
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_xcm_support::{IsNativeConcrete, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
+use sp_runtime::{traits::ConstU32, WeakBoundedVec};
+use sp_std::vec::Vec;
 use xcm::latest::{prelude::*, Weight as XCMWeight};
 use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, CurrencyAdapter,	EnsureXcmOrigin, FixedWeightBounds, IsConcrete, LocationInverter,
-	NativeAsset, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	UsingComponents,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AllowTopLevelPaidExecutionFrom, CurrencyAdapter, EnsureXcmOrigin, FixedWeightBounds,
+	LocationInverter, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32,
+	SovereignSignedViaLocation, TakeWeightCredit, UsingComponents,
 };
-use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
-use xcm_executor::{traits::ShouldExecute, XcmExecutor};
-use sp_std::vec::Vec;
-use sp_runtime::{traits::ConstU32, WeakBoundedVec};
+use xcm_executor::XcmExecutor;
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
@@ -166,9 +165,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::Token;
 		match id {
 			Token(CHER) => Some(MultiLocation::parent()),
-			Token(PARACHER) => {
-				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
-			}
+			Token(PARACHER) =>
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
 			// Erc20(address) if !is_system_contract(address) => {
 			// 	Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
 			// }
@@ -182,14 +180,13 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		use CurrencyId::Token;
 
 		if location == MultiLocation::parent() {
-			return Some(Token(CHER));
+			return Some(Token(CHER))
 		}
 
 		match location {
-			MultiLocation {
-				parents,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} if parents == 1 => {
+			MultiLocation { parents, interior: X2(Parachain(para_id), GeneralKey(key)) }
+				if parents == 1 =>
+			{
 				match (para_id, &key.into_inner()[..]) {
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Acala
@@ -204,15 +201,12 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							// invalid general key
 							None
 						}
-					}
+					},
 					_ => None,
 				}
-			}
+			},
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
-			MultiLocation {
-				parents: 0,
-				interior: X1(GeneralKey(key)),
-			} => {
+			MultiLocation { parents: 0, interior: X1(GeneralKey(key)) } => {
 				let key = &key.into_inner()[..];
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
@@ -220,17 +214,14 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					// Erc20(address) if !is_system_contract(address) => Some(currency_id),
 					_ => None,
 				}
-			}
+			},
 			_ => None,
 		}
 	}
 }
 impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location), ..
-		} = asset
-		{
+		if let MultiAsset { id: Concrete(location), .. } = asset {
 			Self::convert(location)
 		} else {
 			None
@@ -241,11 +232,7 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 pub struct AccountIdToMultiLocation;
 impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 {
-			network: NetworkId::Any,
-			id: account.into(),
-		})
-		.into()
+		X1(AccountId32 { network: NetworkId::Any, id: account.into() }).into()
 	}
 }
 

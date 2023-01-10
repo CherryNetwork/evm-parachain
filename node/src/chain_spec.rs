@@ -1,7 +1,9 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use cumulus_primitives_core::ParaId;
-use parachain_template_runtime::{AccountId, AuraId, Signature, EXISTENTIAL_DEPOSIT, EthereumChainIdConfig};
+use parachain_template_runtime::{
+	AccountId, AuraId, EthereumChainIdConfig, Signature, EXISTENTIAL_DEPOSIT,
+};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -268,6 +270,6 @@ fn testnet_genesis(
 			},
 		},
 		ethereum: Default::default(),
-    	ethereum_chain_id: EthereumChainIdConfig { chain_id },
+		ethereum_chain_id: EthereumChainIdConfig { chain_id },
 	}
 }

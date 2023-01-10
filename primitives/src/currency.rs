@@ -20,12 +20,12 @@
 
 use bstringify::bstringify;
 use codec::{Decode, Encode};
-use sp_runtime::{RuntimeDebug, app_crypto::sp_core};
+use scale_info::TypeInfo;
+use sp_runtime::{app_crypto::sp_core, RuntimeDebug};
 use sp_std::{
 	convert::{Into, TryFrom},
 	prelude::*,
 };
-use scale_info::TypeInfo;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -115,13 +115,13 @@ create_currency_id! {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]
    pub enum TokenSymbol {
-      CHER("Cherry", 18) = 0,
-      PARACHER("Paracherry", 18) = 1,
+	  CHER("Cherry", 18) = 0,
+	  PARACHER("Paracherry", 18) = 1,
    }
 }
 
 pub trait TokenInfo {
-   fn currency_id(&self) -> Option<u8>;
+	fn currency_id(&self) -> Option<u8>;
 	fn name(&self) -> Option<&str>;
 	fn symbol(&self) -> Option<&str>;
 	fn decimals(&self) -> Option<u8>;
@@ -131,7 +131,7 @@ pub trait TokenInfo {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
-   Token(TokenSymbol),
+	Token(TokenSymbol),
 	Erc20(EvmAddress),
 }
 

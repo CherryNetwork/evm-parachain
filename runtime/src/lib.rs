@@ -10,26 +10,22 @@ mod weights;
 pub mod xcm_config;
 
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
+use frame_support::traits::FindAuthor;
+use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
+pub use pallet_transaction_payment::Multiplier;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::{ByteArray, KeyTypeId}, OpaqueMetadata, H160, H256, U256};
+use sp_core::{
+	crypto::{ByteArray, KeyTypeId},
+	OpaqueMetadata, H160, U256,
+};
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys, Perquintill,
+	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
 use sp_std::marker::PhantomData;
-use frame_support::traits::FindAuthor;
-pub use pallet_transaction_payment::Multiplier;
-use pallet_ethereum::Call::transact;
-use pallet_ethereum::Transaction as EthereumTransaction;
-use pallet_evm::{
-	Account as EVMAccount, EVMCurrencyAdapter, EnsureAddressTruncated, EnsureAddressNever,
-	FeeCalculator, GasWeightMapping, HashedAddressMapping, OnChargeEVMTransaction,
-	Runner,
-};
-
 
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -64,9 +60,9 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 
 // XCM Imports
+use cherry_evm_primitives::currency::CurrencyId;
 use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
-use cherry_evm_primitives::currency::{CurrencyId, TokenSymbol};
 
 mod precompiles;
 use precompiles::CherryPrecompiles;
@@ -401,10 +397,7 @@ parameter_types! {
 pub struct FixedGasPrice;
 impl FeeCalculator for FixedGasPrice {
 	fn min_gas_price() -> (U256, Weight) {
-		(
-			(1 * MILLIUNIT * SUPPLY_FACTOR).into(),
-			Weight::zero(),
-		)
+		((1 * MILLIUNIT * SUPPLY_FACTOR).into(), Weight::zero())
 	}
 }
 
@@ -416,7 +409,7 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	{
 		if let Some(author_index) = F::find_author(digests) {
 			let authority_id = Aura::authorities()[author_index as usize].clone();
-			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
+			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]))
 		}
 		None
 	}
