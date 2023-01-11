@@ -9,7 +9,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod weights;
 pub mod xcm_config;
 
-use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
+use cumulus_pallet_parachain_system::{RelayNumberStrictlyIncreases, pallet};
+use fp_self_contained::SelfContainedCall;
 use frame_support::traits::FindAuthor;
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 pub use pallet_transaction_payment::Multiplier;
@@ -115,7 +116,7 @@ pub type SignedExtra = (
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
@@ -588,6 +589,48 @@ mod benches {
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[pallet_evm, EVM]
 	);
+}
+
+impl fp_self_contained::SelfContainedCall for Call {
+	type SignedInfo = H160;
+
+	fn is_self_contained(&self) -> bool {
+		 match self {
+			Call::Ethereum(call) => call.is_self_contained(),
+			_ => false,
+		 }
+	}
+
+	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, frame_support::unsigned::TransactionValidityError>> {
+		 match self {
+			Call::Ethereum(call) => call.check_self_contained(),
+			_ => None,
+		 }
+	}
+
+	fn validate_self_contained(
+			&self,
+			info: &Self::SignedInfo,
+			dispatch_info: &sp_runtime::traits::DispatchInfoOf<Self>,
+			len: usize,
+		) -> Option<TransactionValidity> {
+		 match self {
+			Call::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
+			_ => None,
+		 }
+	}
+
+	fn apply_self_contained(
+			self,
+			info: Self::SignedInfo,
+		) -> Option<sp_runtime::DispatchResultWithInfo<sp_runtime::traits::PostDispatchInfoOf<Self>>> {
+		 match self {
+			Call::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(call.dispatch(
+				Origin::from(pallet_ethereum::RawOrigin::EthereumTransaction(info)),
+			)),
+			_ => None,
+		 }
+	}
 }
 
 impl_runtime_apis! {
