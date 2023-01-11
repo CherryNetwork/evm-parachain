@@ -271,5 +271,6 @@ fn testnet_genesis(
 		},
 		ethereum: Default::default(),
 		ethereum_chain_id: EthereumChainIdConfig { chain_id },
+		base_fee: Default::default(),
 	}
 }
