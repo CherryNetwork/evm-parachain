@@ -9,8 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod weights;
 pub mod xcm_config;
 
-use cumulus_pallet_parachain_system::{RelayNumberStrictlyIncreases, pallet};
-use fp_self_contained::SelfContainedCall;
+use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use frame_support::traits::FindAuthor;
 use pallet_evm::{EnsureAddressTruncated, FeeCalculator, HashedAddressMapping};
 pub use pallet_transaction_payment::Multiplier;
@@ -22,7 +21,7 @@ use sp_core::{
 };
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, Verify},
+	traits::{Dispatchable, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
@@ -591,19 +590,19 @@ mod benches {
 	);
 }
 
-impl fp_self_contained::SelfContainedCall for Call {
+impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
 
 	fn is_self_contained(&self) -> bool {
 		 match self {
-			Call::Ethereum(call) => call.is_self_contained(),
+			RuntimeCall::Ethereum(call) => call.is_self_contained(),
 			_ => false,
 		 }
 	}
 
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, frame_support::unsigned::TransactionValidityError>> {
 		 match self {
-			Call::Ethereum(call) => call.check_self_contained(),
+			RuntimeCall::Ethereum(call) => call.check_self_contained(),
 			_ => None,
 		 }
 	}
@@ -615,7 +614,7 @@ impl fp_self_contained::SelfContainedCall for Call {
 			len: usize,
 		) -> Option<TransactionValidity> {
 		 match self {
-			Call::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
+			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
 			_ => None,
 		 }
 	}
@@ -625,8 +624,8 @@ impl fp_self_contained::SelfContainedCall for Call {
 			info: Self::SignedInfo,
 		) -> Option<sp_runtime::DispatchResultWithInfo<sp_runtime::traits::PostDispatchInfoOf<Self>>> {
 		 match self {
-			Call::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(call.dispatch(
-				Origin::from(pallet_ethereum::RawOrigin::EthereumTransaction(info)),
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(call.dispatch(
+				RuntimeOrigin::from(pallet_ethereum::RawOrigin::EthereumTransaction(info)),
 			)),
 			_ => None,
 		 }
