@@ -81,6 +81,7 @@ pub fn development_config() -> ChainSpec {
 		move || {
 			testnet_genesis(
 				// initial collators.
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					(
 						get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -137,6 +138,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		move || {
 			testnet_genesis(
 				// initial collators.
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					(
 						get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -184,6 +186,7 @@ pub fn local_testnet_config() -> ChainSpec {
 }
 
 fn testnet_genesis(
+	sudo_key: AccountId,
 	invulnerables: Vec<(AccountId, AuraId)>,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
@@ -272,5 +275,8 @@ fn testnet_genesis(
 		ethereum: Default::default(),
 		ethereum_chain_id: EthereumChainIdConfig { chain_id },
 		base_fee: Default::default(),
+    	sudo: SudoConfig {
+			key: Some(sudo_key),
+		},
 	}
 }
