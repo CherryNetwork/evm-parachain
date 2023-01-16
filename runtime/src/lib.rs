@@ -9,6 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod weights;
 pub mod xcm_config;
 
+use codec::{Encode, Decode};
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use frame_support::traits::FindAuthor;
 use pallet_evm::{Account as EVMAccount, EnsureAddressRoot, EnsureAddressNever, FeeCalculator, HashedAddressMapping, Runner};
@@ -607,6 +608,30 @@ construct_runtime!(
 		BaseFee: pallet_base_fee::{Pallet, Storage, Event, Call, Config<T>} = 44,
 	}
 );
+
+pub struct TransactionConverter;
+
+impl fp_rpc::ConvertTransaction<UncheckedExtrinsic> for TransactionConverter {
+	fn convert_transaction(&self, transaction: pallet_ethereum::Transaction) -> UncheckedExtrinsic {
+		UncheckedExtrinsic::new_unsigned(
+			pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+		)
+	}
+}
+
+impl fp_rpc::ConvertTransaction<opaque::UncheckedExtrinsic> for TransactionConverter {
+	fn convert_transaction(
+		&self,
+		transaction: pallet_ethereum::Transaction,
+	) -> opaque::UncheckedExtrinsic {
+		let extrinsic = UncheckedExtrinsic::new_unsigned(
+			pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+		);
+		let encoded = extrinsic.encode();
+		opaque::UncheckedExtrinsic::decode(&mut &encoded[..])
+			.expect("Encoded extrinsic is always valid")
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
