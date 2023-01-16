@@ -6,10 +6,12 @@
 #![warn(missing_docs)]
 
 use std::sync::Arc;
+use jsonrpsee::RpcModule;
 
-use parachain_template_runtime::{opaque::Block, AccountId, Balance, Index as Nonce};
+use parachain_template_runtime::{opaque::Block, AccountId, Balance, Index as Nonce, Hash};
 
-use sc_client_api::AuxStore;
+use sc_client_api::{AuxStore, backend::Backend, StorageProvider};
+use sc_network::NetworkService;
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
@@ -27,13 +29,16 @@ pub struct FullDeps<C, P> {
 	pub pool: Arc<P>,
 	/// Whether to deny unsafe calls
 	pub deny_unsafe: DenyUnsafe,
+	/// Network Service
+	pub network: Arc<NetworkService<Block, Hash>>,
 }
 
 /// Instantiate all RPC extensions.
-pub fn create_full<C, P>(
+pub fn create_full<C, P, BE>(
 	deps: FullDeps<C, P>,
-) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
+) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
+	BE: Backend<Block> + 'static,
 	C: ProvideRuntimeApi<Block>
 		+ HeaderBackend<Block>
 		+ AuxStore
@@ -41,18 +46,25 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
+	C: StorageProvider<Block, BE>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: BlockBuilder<Block>,
+	C::Api: fp_rpc::EthereumRuntimeRPCApi<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 {
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
+	use fc_rpc::{
+		Net, NetApiServer
+	};
 
-	let mut module = RpcExtension::new(());
-	let FullDeps { client, pool, deny_unsafe } = deps;
+	let mut io = RpcModule::new(());
+	let FullDeps { client, pool, deny_unsafe, network } = deps;
 
-	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
-	module.merge(TransactionPayment::new(client).into_rpc())?;
-	Ok(module)
+	io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
+	io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+	io.merge(Net::new(client.clone(), network, true).into_rpc())?;
+	
+	Ok(io)
 }
