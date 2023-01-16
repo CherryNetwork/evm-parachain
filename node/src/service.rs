@@ -1,8 +1,10 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 // std
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration, future};
 
+use futures::StreamExt;
+use fc_mapping_sync::{SyncStrategy, MappingSyncWorker};
 // rpc
 use jsonrpsee::RpcModule;
 
@@ -24,16 +26,18 @@ use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayChainRpcInterface};
 
+use sc_client_api::BlockchainEvents;
 // Substrate Imports
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
 use sc_network_common::service::NetworkBlock;
-use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
+use sc_service::{BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
+use sc_cli::SubstrateCli;
 
 use polkadot_service::CollatorPair;
 
@@ -50,6 +54,17 @@ impl sc_executor::NativeExecutionDispatch for TemplateRuntimeExecutor {
 	fn native_version() -> sc_executor::NativeVersion {
 		parachain_template_runtime::native_version()
 	}
+}
+
+pub fn frontier_database_dir(config: &Configuration) -> std::path::PathBuf {
+	config
+		.base_path
+		.as_ref()
+		.map(|base_path| base_path.config_dir(config.chain_spec.id()))
+		.unwrap_or_else(|| {
+			BasePath::from_project("", "", &crate::cli::Cli::executable_name())
+				.config_dir(config.chain_spec.id())
+	})
 }
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -73,7 +88,7 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 			Block,
 			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		>,
-		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
+		(Arc<fc_db::Backend<Block>>, Option<Telemetry>, Option<TelemetryWorkerHandle>),
 	>,
 	sc_service::Error,
 >
@@ -147,6 +162,12 @@ where
 		client.clone(),
 	);
 
+	let frontier_backend = Arc::new(fc_db::Backend::open(
+		Arc::clone(&client),
+		&config.database,
+		&frontier_database_dir(config),
+	)?);
+
 	let import_queue = build_import_queue(
 		client.clone(),
 		config,
@@ -162,7 +183,7 @@ where
 		task_manager,
 		transaction_pool,
 		select_chain: (),
-		other: (telemetry, telemetry_worker_handle),
+		other: (frontier_backend, telemetry, telemetry_worker_handle),
 	};
 
 	Ok(params)
@@ -264,7 +285,7 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial::<RuntimeApi, Executor, BIQ>(&parachain_config, build_import_queue)?;
-	let (mut telemetry, telemetry_worker_handle) = params.other;
+	let (frontier_backend, mut telemetry, telemetry_worker_handle) = params.other;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -334,6 +355,22 @@ where
 		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
 	})?;
+
+	task_manager.spawn_essential_handle().spawn(
+		"frontier-mapping-sync-worker",
+		None,
+		MappingSyncWorker::new(
+			client.import_notification_stream(),
+			Duration::new(12, 0),
+			client.clone(),
+			backend.clone(),
+			frontier_backend.clone(),
+			3,
+			0,
+			SyncStrategy::Parachain,
+		)
+		.for_each(|()| future::ready(())),
+	);
 
 	if let Some(hwbench) = hwbench {
 		sc_sysinfo::print_hwbench(&hwbench);
@@ -534,3 +571,4 @@ pub async fn start_parachain_node(
 	)
 	.await
 }
+
