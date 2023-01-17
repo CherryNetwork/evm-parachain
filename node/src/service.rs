@@ -1,12 +1,17 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 // std
-use std::{sync::Arc, time::Duration, future};
+use std::{
+	collections::BTreeMap,
+	sync::{Arc, Mutex}, 
+	time::Duration, 
+	future};
 
+use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit};
 use futures::StreamExt;
 use fc_mapping_sync::{SyncStrategy, MappingSyncWorker};
-// rpc
 use jsonrpsee::RpcModule;
+use fc_rpc::{OverrideHandle, RuntimeApiStorageOverride};
 
 use cumulus_client_cli::CollatorOptions;
 // Local Runtime Types
@@ -40,7 +45,6 @@ use substrate_prometheus_endpoint::Registry;
 use sc_cli::SubstrateCli;
 
 use polkadot_service::CollatorPair;
-
 /// Native executor instance.
 pub struct TemplateRuntimeExecutor;
 
@@ -88,7 +92,7 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 			Block,
 			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		>,
-		(Arc<fc_db::Backend<Block>>, Option<Telemetry>, Option<TelemetryWorkerHandle>),
+		(Arc<fc_db::Backend<Block>>, Option<Telemetry>, Option<TelemetryWorkerHandle>, FeeHistoryCache),
 	>,
 	sc_service::Error,
 >
@@ -167,6 +171,7 @@ where
 		&config.database,
 		&frontier_database_dir(config),
 	)?);
+	let fee_history_cache: FeeHistoryCache = Arc::new(Mutex::new(BTreeMap::new()));
 
 	let import_queue = build_import_queue(
 		client.clone(),
@@ -183,7 +188,7 @@ where
 		task_manager,
 		transaction_pool,
 		select_chain: (),
-		other: (frontier_backend, telemetry, telemetry_worker_handle),
+		other: (frontier_backend, telemetry, telemetry_worker_handle, fee_history_cache),
 	};
 
 	Ok(params)
@@ -285,7 +290,7 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial::<RuntimeApi, Executor, BIQ>(&parachain_config, build_import_queue)?;
-	let (frontier_backend, mut telemetry, telemetry_worker_handle) = params.other;
+	let (frontier_backend, mut telemetry, telemetry_worker_handle, fee_history_cache) = params.other;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -307,6 +312,7 @@ where
 
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
+	let role = parachain_config.role.clone();
 	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
@@ -324,18 +330,39 @@ where
 			})),
 			warp_sync: None,
 		})?;
+	let overrides = Arc::new(OverrideHandle {
+		schemas: BTreeMap::new(),
+		fallback: Box::new(RuntimeApiStorageOverride::new(client.clone())),
+	});
+	let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
+		task_manager.spawn_handle(),
+		overrides.clone(),
+		50,
+		50,
+		prometheus_registry.clone(),
+	));
 
 	let rpc_builder = {
 		let client = client.clone();
 		let transaction_pool = transaction_pool.clone();
 		let network = network.clone();
+		let is_authority = role.is_authority();
+		let frontier_backend = frontier_backend.clone();
+		let fee_history_cache = fee_history_cache.clone();
 
 		Box::new(move |deny_unsafe, _| {
 			let deps = crate::rpc::FullDeps {
 				client: client.clone(),
 				pool: transaction_pool.clone(),
+				graph: transaction_pool.pool().clone(),
 				deny_unsafe,
+				is_authority,
 				network: network.clone(),
+				backend: frontier_backend.clone(),
+				max_past_logs: 1024,
+				fee_history_cache: fee_history_cache.clone(),
+				fee_history_cache_limit: 2048,
+				block_data_cache: block_data_cache.clone(),
 			};
 
 			crate::rpc::create_full(deps).map_err(Into::into)

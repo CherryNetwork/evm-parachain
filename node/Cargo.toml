@@ -86,6 +86,7 @@ fp-rpc = { git = "https://github.com/paritytech/frontier.git", branch = "polkado
 fc-rpc = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30" }
 fc-mapping-sync = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30" }
 fc-db = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30" }
+fc-rpc-core = { git = "https://github.com/paritytech/frontier.git", branch = "polkadot-v0.9.30" }
 
 [build-dependencies]
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30" }
