@@ -7,11 +7,10 @@ use std::{
 	time::Duration, 
 	future};
 
-use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit};
+use fc_rpc_core::types::FeeHistoryCache;
 use futures::StreamExt;
 use fc_mapping_sync::{SyncStrategy, MappingSyncWorker};
 use jsonrpsee::RpcModule;
-use fc_rpc::{OverrideHandle, RuntimeApiStorageOverride};
 
 use cumulus_client_cli::CollatorOptions;
 // Local Runtime Types
@@ -109,7 +108,8 @@ where
 			StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>, Block>,
 		> + sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
-		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
+		+ fp_rpc::EthereumRuntimeRPCApi<Block>
+		+ fp_rpc::ConvertTransactionRuntimeApi<Block>,
 	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	BIQ: FnOnce(
@@ -250,7 +250,8 @@ where
 		+ cumulus_primitives_core::CollectCollationInfo<Block>
 		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
 		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
+		+ fp_rpc::EthereumRuntimeRPCApi<Block>
+		+ fp_rpc::ConvertTransactionRuntimeApi<Block>,
 	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
@@ -330,10 +331,7 @@ where
 			})),
 			warp_sync: None,
 		})?;
-	let overrides = Arc::new(OverrideHandle {
-		schemas: BTreeMap::new(),
-		fallback: Box::new(RuntimeApiStorageOverride::new(client.clone())),
-	});
+	let overrides = crate::rpc::overrides_handle(client.clone());
 	let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
 		task_manager.spawn_handle(),
 		overrides.clone(),
@@ -359,9 +357,10 @@ where
 				is_authority,
 				network: network.clone(),
 				backend: frontier_backend.clone(),
-				max_past_logs: 1024,
+				// max_past_logs: 1024,
 				fee_history_cache: fee_history_cache.clone(),
 				fee_history_cache_limit: 2048,
+				overrides: overrides.clone(),
 				block_data_cache: block_data_cache.clone(),
 			};
 
