@@ -148,7 +148,7 @@ impl WeightToFeePolynomial for WeightToFee {
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLIUNIT:
 		// in our template, we map to 1/10 of that, or 1/10 MILLIUNIT
-		let p = MILLIUNIT / 10;
+		let p = MILLICHER / 10;
 		let q = 100 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
 		smallvec![WeightToFeeCoefficient {
 			degree: 1,
@@ -214,13 +214,17 @@ pub const DAYS: BlockNumber = HOURS * 24;
 // Provide a common factor between runtimes based on a supply of 10_000_000 tokens.
 pub const SUPPLY_FACTOR: Balance = 100;
 
-// Unit = the base number of indivisible units for balances
-pub const UNIT: Balance = 1_000_000_000_000_000_000;
-pub const MILLIUNIT: Balance = 1_000_000_000_000_000;
-pub const MICROUNIT: Balance = 1_000_000_000_000;
+pub const WEI: Balance = 1;
+pub const KILOWEI: Balance = 1_000;
+pub const MEGAWEI: Balance = 1_000_000;
+pub const GIGAWEI: Balance = 1_000_000_000;
+pub const MICROCHER: Balance = 1_000_000_000_000;
+pub const MILLICHER: Balance = 1_000_000_000_000_000;
+pub const CHER: Balance = 1_000_000_000_000_000_000;
+pub const KILOCHER: Balance = 1_000_000_000_000_000_000_000;
 
 /// The existential deposit. Set to 1/10 of the Connected Relay Chain.
-pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
+pub const EXISTENTIAL_DEPOSIT: Balance = MILLICHER;
 
 /// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
 /// used to limit the maximal weight of a single extrinsic.
@@ -371,7 +375,7 @@ impl pallet_sudo::Config for Runtime {
 
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
+	pub const TransactionByteFee: Balance = 10 * MICROCHER;
 	pub const OperationalFeeMultiplier: u8 = 5;
 }
 
