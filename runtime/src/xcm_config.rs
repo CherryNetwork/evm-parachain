@@ -24,6 +24,8 @@ use xcm_builder::{
 };
 use xcm_executor::XcmExecutor;
 
+use cherry_evm_primitives::currency::{EvmAddress, CurrencyId::Erc20, TokenSymbol::*};
+
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Any;
@@ -158,18 +160,23 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
+
+pub fn is_system_contract(address: EvmAddress) -> bool {
+	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
+}
+
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		use cherry_evm_primitives::currency::TokenSymbol::*;
 		use CurrencyId::Token;
 		match id {
 			Token(CHER) => Some(MultiLocation::parent()),
 			Token(PARACHER) =>
 				Some(native_currency_location(ParachainInfo::get().into(), id.encode())),
-			// Erc20(address) if !is_system_contract(address) => {
-			// 	Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
-			// }
+			Erc20(address) if !is_system_contract(address) => {
+				Some(native_currency_location(ParachainInfo::get().into(), id.encode()))
+			}
 			_ => None,
 		}
 	}
@@ -194,7 +201,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
 								Token(PARACHER) => Some(currency_id),
-								// Erc20(address) if !is_system_contract(address) => Some(currency_id),
+								Erc20(address) if !is_system_contract(address) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -211,7 +218,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
 				match currency_id {
 					Token(PARACHER) => Some(currency_id),
-					// Erc20(address) if !is_system_contract(address) => Some(currency_id),
+					Erc20(address) if !is_system_contract(address) => Some(currency_id),
 					_ => None,
 				}
 			},
