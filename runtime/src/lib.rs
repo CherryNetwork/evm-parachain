@@ -9,10 +9,15 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod weights;
 pub mod xcm_config;
 
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
+use fp_rpc::TransactionStatus;
 use frame_support::traits::FindAuthor;
-use pallet_evm::{Account as EVMAccount, EnsureAddressRoot, EnsureAddressNever, FeeCalculator, HashedAddressMapping, Runner};
+use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
+use pallet_evm::{
+	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
+	HashedAddressMapping, Runner,
+};
 pub use pallet_transaction_payment::Multiplier;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
@@ -22,13 +27,14 @@ use sp_core::{
 };
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{Dispatchable, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, Verify, UniqueSaturatedInto},
+	traits::{
+		AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, Dispatchable, IdentifyAccount,
+		UniqueSaturatedInto, Verify,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, MultiSignature,
+	ApplyExtrinsicResult,
 };
 use sp_std::marker::PhantomData;
-use fp_rpc::TransactionStatus;
-use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
 
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -63,7 +69,7 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 
 // XCM Imports
-use cherry_evm_primitives::currency::CurrencyId;
+use cherry_evm_primitives::{account::EthereumSignature, currency::CurrencyId};
 use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
 
@@ -71,7 +77,7 @@ mod precompiles;
 use precompiles::CherryPrecompiles;
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
-pub type Signature = MultiSignature;
+pub type Signature = EthereumSignature;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
@@ -90,7 +96,7 @@ pub type Hash = sp_core::H256;
 pub type BlockNumber = u32;
 
 /// The address format for describing accounts.
-pub type Address = MultiAddress<AccountId, ()>;
+pub type Address = AccountId;
 
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
@@ -410,8 +416,7 @@ parameter_types! {
 pub struct FixedGasPrice;
 impl FeeCalculator for FixedGasPrice {
 	fn min_gas_price() -> (U256, Weight) {
-	((1 * GIGAWEI * SUPPLY_FACTOR).into(),
-		Weight::zero(),)
+		((1 * GIGAWEI * SUPPLY_FACTOR).into(), Weight::zero())
 	}
 }
 
@@ -659,41 +664,44 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
 
 	fn is_self_contained(&self) -> bool {
-		 match self {
+		match self {
 			RuntimeCall::Ethereum(call) => call.is_self_contained(),
 			_ => false,
-		 }
+		}
 	}
 
-	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, frame_support::unsigned::TransactionValidityError>> {
-		 match self {
+	fn check_self_contained(
+		&self,
+	) -> Option<Result<Self::SignedInfo, frame_support::unsigned::TransactionValidityError>> {
+		match self {
 			RuntimeCall::Ethereum(call) => call.check_self_contained(),
 			_ => None,
-		 }
+		}
 	}
 
 	fn validate_self_contained(
-			&self,
-			info: &Self::SignedInfo,
-			dispatch_info: &sp_runtime::traits::DispatchInfoOf<Self>,
-			len: usize,
-		) -> Option<TransactionValidity> {
-		 match self {
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &sp_runtime::traits::DispatchInfoOf<Self>,
+		len: usize,
+	) -> Option<TransactionValidity> {
+		match self {
 			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
 			_ => None,
-		 }
+		}
 	}
 
 	fn apply_self_contained(
-			self,
-			info: Self::SignedInfo,
-		) -> Option<sp_runtime::DispatchResultWithInfo<sp_runtime::traits::PostDispatchInfoOf<Self>>> {
-		 match self {
-			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(call.dispatch(
-				RuntimeOrigin::from(pallet_ethereum::RawOrigin::EthereumTransaction(info)),
-			)),
+		self,
+		info: Self::SignedInfo,
+	) -> Option<sp_runtime::DispatchResultWithInfo<sp_runtime::traits::PostDispatchInfoOf<Self>>> {
+		match self {
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) =>
+				Some(call.dispatch(RuntimeOrigin::from(
+					pallet_ethereum::RawOrigin::EthereumTransaction(info),
+				))),
 			_ => None,
-		 }
+		}
 	}
 }
 

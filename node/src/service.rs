@@ -3,13 +3,14 @@
 // std
 use std::{
 	collections::BTreeMap,
-	sync::{Arc, Mutex}, 
-	time::Duration, 
-	future};
+	future,
+	sync::{Arc, Mutex},
+	time::Duration,
+};
 
+use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use fc_rpc_core::types::FeeHistoryCache;
 use futures::StreamExt;
-use fc_mapping_sync::{SyncStrategy, MappingSyncWorker};
 use jsonrpsee::RpcModule;
 
 use cumulus_client_cli::CollatorOptions;
@@ -32,16 +33,18 @@ use cumulus_relay_chain_rpc_interface::{create_client_and_start_worker, RelayCha
 
 use sc_client_api::BlockchainEvents;
 // Substrate Imports
+use sc_cli::SubstrateCli;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
 use sc_network_common::service::NetworkBlock;
-use sc_service::{BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
+use sc_service::{
+	BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
+};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
-use sc_cli::SubstrateCli;
 
 use polkadot_service::CollatorPair;
 /// Native executor instance.
@@ -67,7 +70,7 @@ pub fn frontier_database_dir(config: &Configuration) -> std::path::PathBuf {
 		.unwrap_or_else(|| {
 			BasePath::from_project("", "", &crate::cli::Cli::executable_name())
 				.config_dir(config.chain_spec.id())
-	})
+		})
 }
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -91,7 +94,12 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 			Block,
 			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		>,
-		(Arc<fc_db::Backend<Block>>, Option<Telemetry>, Option<TelemetryWorkerHandle>, FeeHistoryCache),
+		(
+			Arc<fc_db::Backend<Block>>,
+			Option<Telemetry>,
+			Option<TelemetryWorkerHandle>,
+			FeeHistoryCache,
+		),
 	>,
 	sc_service::Error,
 >
@@ -291,7 +299,8 @@ where
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial::<RuntimeApi, Executor, BIQ>(&parachain_config, build_import_queue)?;
-	let (frontier_backend, mut telemetry, telemetry_worker_handle, fee_history_cache) = params.other;
+	let (frontier_backend, mut telemetry, telemetry_worker_handle, fee_history_cache) =
+		params.other;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -597,4 +606,3 @@ pub async fn start_parachain_node(
 	)
 	.await
 }
-

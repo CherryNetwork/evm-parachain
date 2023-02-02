@@ -896,10 +896,13 @@ version = "0.1.0"
 dependencies = [
  "blake2-rfc",
  "bstringify",
+ "frame-support",
+ "frame-system",
  "hex",
  "impl-serde",
  "libsecp256k1 0.6.0",
  "log",
+ "orml-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -909,6 +912,8 @@ dependencies = [
  "sp-runtime",
  "sp-runtime-interface",
  "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]

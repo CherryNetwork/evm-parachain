@@ -275,8 +275,6 @@ fn testnet_genesis(
 		ethereum: Default::default(),
 		ethereum_chain_id: EthereumChainIdConfig { chain_id },
 		base_fee: Default::default(),
-    	sudo: parachain_template_runtime::SudoConfig {
-			key: Some(sudo_key),
-		},
+		sudo: parachain_template_runtime::SudoConfig { key: Some(sudo_key) },
 	}
 }
