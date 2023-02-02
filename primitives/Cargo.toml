@@ -5,19 +5,44 @@ edition = "2021"
 
 [dependencies]
 bstringify = "0.1.2"
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-serde = { version = "1.0.145", optional = true }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0.145", optional = true, default-features = false, features = [ "derive" ] }
+blake2-rfc = { version = "0.2.18", optional = true, default-features = false }
+hex = { version = "0.4", default-features = false }
+impl-serde = { version = "0.3.1", default-features = false }
+libsecp256k1 = { version = "0.6", default-features = false, features = [ "hmac" ] }
+log = "0.4"
+sha3 = { version = "0.9", default-features = false }
 
+# Substrate
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
+scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
+sp-runtime-interface = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30", default-features = false }
+
+[dev-dependencies]
+hex = "0.4.3"
 
 [features]
 default = ["std"]
 std = [
-   "serde",
+   "full_crypto",
    "codec/std",
    "scale-info/std",
    "sp-runtime/std",
    "sp-std/std",
+   "hex/std",
+	"impl-serde/std",
+	"libsecp256k1/std",
+	"serde/std",
+	"sha3/std",
+	"sp-core/std",
+	"sp-io/std",
+]
+
+full_crypto = [
+	"blake2-rfc",
+	"sp-runtime-interface/disable_target_static_assertions",
 ]
