@@ -396,6 +396,8 @@ impl pallet_transaction_payment::Config for Runtime {
 
 impl pallet_evm_chain_id::Config for Runtime {}
 
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
 /// Current approximation of the gas/s consumption considering
 /// EVM execution over compiled WASM (on 4.4Ghz CPU).
 /// Given the 500ms Weight, from which 75% only are used for transactions,
@@ -587,9 +589,10 @@ construct_runtime!(
 		ParachainSystem: cumulus_pallet_parachain_system::{
 			Pallet, Call, Config, Storage, Inherent, Event<T>, ValidateUnsigned,
 		} = 1,
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 3,
-		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 2,
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 3,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 4,
+		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
 
 		// Monetary stuff.
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
