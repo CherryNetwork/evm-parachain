@@ -453,6 +453,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b645a089122eccb6111b4f81cbc1a49f5900ac4666bb93ac027feaecf15607bf"
 
 [[package]]
+name = "basic-toml"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e819b667739967cd44d308b8c7b71305d8bb0729ac44a248aa08f33d01950b4"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "beef"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1980,6 +1989,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "diff"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
+
+[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2048,6 +2063,12 @@ dependencies = [
  "redox_users",
  "winapi",
 ]
+
+[[package]]
+name = "dissimilar"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "210ec60ae7d710bed8683e333e9d2855a8a56a3e9892b38bad3bb0d4d29b0d5e"
 
 [[package]]
 name = "dns-parser"
@@ -2944,6 +2965,40 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "frame-support-test"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
+dependencies = [
+ "frame-support",
+ "frame-support-test-pallet",
+ "frame-system",
+ "parity-scale-codec",
+ "pretty_assertions",
+ "rustversion",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-std",
+ "sp-version",
+ "trybuild",
+]
+
+[[package]]
+name = "frame-support-test-pallet"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
 ]
 
 [[package]]
@@ -5220,6 +5275,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "nimbus-primitives"
+version = "0.9.0"
+dependencies = [
+ "async-trait",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "nix"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5551,6 +5623,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b7820b9daea5457c9f21c69448905d723fbd21136ccf521748f23fd49e723ee"
 
 [[package]]
+name = "output_vt100"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "628223faebab4e3e40667ee0b2336d34a5b960ff60ea743ddfdbcf7770bcfb66"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "owning_ref"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5581,6 +5662,47 @@ dependencies = [
  "scale-info",
  "sp-application-crypto",
  "sp-consensus-aura",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-author-inherent"
+version = "0.9.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-support-test",
+ "frame-system",
+ "log",
+ "nimbus-primitives",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-authorship",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-author-slot-filter"
+version = "0.9.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-support-test",
+ "frame-system",
+ "log",
+ "nimbus-primitives",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -6704,11 +6826,13 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal",
  "log",
+ "nimbus-primitives",
  "orml-traits",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-aura",
- "pallet-authorship",
+ "pallet-author-inherent",
+ "pallet-author-slot-filter",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-collator-selection",
@@ -8225,6 +8349,18 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "pretty_assertions"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a25e9bcb20aa780fd0bb16b72403a9064d6b3f22f026946029acb941a50af755"
+dependencies = [
+ "ctor",
+ "diff",
+ "output_vt100",
+ "yansi",
+]
 
 [[package]]
 name = "prettyplease"
@@ -12071,6 +12207,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "trybuild"
+version = "1.0.77"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a44da5a6f2164c8e14d3bbc0657d69c5966af9f5f6930d4f600b1f5c4a673413"
+dependencies = [
+ "basic-toml",
+ "dissimilar",
+ "glob",
+ "once_cell",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "termcolor",
+]
+
+[[package]]
 name = "tt-call"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13021,6 +13173,12 @@ dependencies = [
  "rand 0.8.5",
  "static_assertions",
 ]
+
+[[package]]
+name = "yansi"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 
 [[package]]
 name = "zeroize"

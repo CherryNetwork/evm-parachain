@@ -1,6 +1,7 @@
 use super::{
 	AccountId, Balance, Balances, Convert, CurrencyId, Get, ParachainInfo, ParachainSystem,
 	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
+	DealWithFees,
 };
 use codec::{Decode, Encode};
 use frame_support::{
@@ -11,7 +12,6 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{IsNativeConcrete, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use polkadot_runtime_common::impls::ToAuthor;
 use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 use sp_std::vec::Vec;
 use xcm::latest::{prelude::*, Weight as XCMWeight};
@@ -119,7 +119,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = XcmBarrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type Trader =
-		UsingComponents<WeightToFee, RelayLocation, AccountId, Balances, ToAuthor<Runtime>>;
+		UsingComponents<WeightToFee, RelayLocation, AccountId, Balances, DealWithFees<Runtime>>;
 	type ResponseHandler = PolkadotXcm;
 	type AssetTrap = PolkadotXcm;
 	type AssetClaims = PolkadotXcm;
@@ -238,10 +238,20 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
+pub struct AccountIdToMultiLocation<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<AccountId> sp_runtime::traits::Convert<AccountId, MultiLocation>
+	for AccountIdToMultiLocation<AccountId>
+where
+	AccountId: Into<[u8; 20]>,
+{
 	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 { network: NetworkId::Any, id: account.into() }).into()
+		MultiLocation {
+			parents: 0,
+			interior: X1(AccountKey20 {
+				network: NetworkId::Any,
+				key: account.into(),
+			}),
+		}
 	}
 }
 
@@ -271,7 +281,7 @@ impl orml_xtokens::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
 	type CurrencyIdConvert = CurrencyIdConvert;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type SelfLocation = SelfLocation;
