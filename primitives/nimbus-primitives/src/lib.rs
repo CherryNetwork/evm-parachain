@@ -22,9 +22,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use sp_application_crypto::KeyTypeId;
-use sp_runtime::{generic::DigestItem, traits::BlockNumberProvider, ConsensusEngineId};
+use sp_runtime::generic::DigestItem;
+use sp_runtime::traits::BlockNumberProvider;
+use sp_runtime::ConsensusEngineId;
 #[cfg(feature = "runtime-benchmarks")]
 use sp_std::vec;
+use sp_std::vec::Vec;
 
 pub mod digests;
 mod inherents;
@@ -110,6 +113,12 @@ impl SlotBeacon for IntervalBeacon {
 /// There may be another variant where the caller only supplies a slot and the
 /// implementation replies with a complete set of eligible authors.
 pub trait CanAuthor<AuthorId> {
+	#[cfg(feature = "try-runtime")]
+	// With `try-runtime` the local author should always be able to author a block.
+	fn can_author(author: &AuthorId, slot: &u32) -> bool {
+		true
+	}
+	#[cfg(not(feature = "try-runtime"))]
 	fn can_author(author: &AuthorId, slot: &u32) -> bool;
 	#[cfg(feature = "runtime-benchmarks")]
 	fn get_authors(_slot: &u32) -> Vec<AuthorId> {

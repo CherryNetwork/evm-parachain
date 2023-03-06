@@ -27,7 +27,7 @@ pub struct InherentDataProvider;
 #[cfg(feature = "std")]
 #[async_trait::async_trait]
 impl sp_inherents::InherentDataProvider for InherentDataProvider {
-	fn provide_inherent_data(
+	async fn provide_inherent_data(
 		&self,
 		inherent_data: &mut InherentData,
 	) -> Result<(), sp_inherents::Error> {
@@ -41,12 +41,12 @@ impl sp_inherents::InherentDataProvider for InherentDataProvider {
 	) -> Option<Result<(), sp_inherents::Error>> {
 		// Dont' process modules from other inherents
 		if *identifier != INHERENT_IDENTIFIER {
-			return None
+			return None;
 		}
 
 		// All errors with the author inehrent are fatal
-		Some(Err(sp_inherents::Error::Application(Box::from(String::from(
-			"Error processing dummy nimbus inherent",
-		)))))
+		Some(Err(sp_inherents::Error::Application(Box::from(
+			String::from("Error processing dummy nimbus inherent"),
+		))))
 	}
 }

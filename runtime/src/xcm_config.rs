@@ -1,7 +1,6 @@
 use super::{
-	AccountId, Balance, Balances, Convert, CurrencyId, Get, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
-	DealWithFees,
+	AccountId, Balances, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 use codec::{Decode, Encode};
 use frame_support::{
@@ -22,12 +21,12 @@ use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountKey20AsNative, SovereignSignedViaLocation,
 	TakeWeightCredit, UsingComponents,
 };
-use xcm_executor::XcmExecutor;
 
 use cherry_evm_primitives::{
 	currency::{CurrencyId::Erc20, EvmAddress, TokenSymbol::*},
 	origin_conversion::SignedToAccountId20,
 };
+use xcm_executor::{traits::ShouldExecute, XcmExecutor};
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
@@ -172,7 +171,7 @@ pub fn is_system_contract(address: EvmAddress) -> bool {
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		use CurrencyId::Token;
+		use crate::CurrencyId::Token;
 		match id {
 			Token(CHER) => Some(MultiLocation::parent()),
 			Token(PARACHER) =>
@@ -186,7 +185,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use cherry_evm_primitives::currency::TokenSymbol::*;
-		use CurrencyId::Token;
+		use crate::CurrencyId::Token;
 
 		if location == MultiLocation::parent() {
 			return Some(Token(CHER))
