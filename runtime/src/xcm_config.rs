@@ -11,8 +11,7 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{IsNativeConcrete, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use sp_runtime::{traits::ConstU32, WeakBoundedVec};
-use sp_std::vec::Vec;
+use sp_runtime::{traits::{ConstU32, Convert}, WeakBoundedVec};
 use xcm::latest::{prelude::*, Weight as XCMWeight};
 use xcm_builder::{
 	AccountKey20Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -27,6 +26,13 @@ use cherry_evm_primitives::{
 	origin_conversion::SignedToAccountId20,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
+use crate::{Balance, CurrencyId, DealWithFees};
+use sp_std::{
+	convert::{From, Into, TryFrom},
+	vec::Vec,
+	prelude::*,
+};
+use sp_core::Get;
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
