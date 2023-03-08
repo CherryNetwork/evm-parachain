@@ -2,13 +2,14 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use cumulus_primitives_core::ParaId;
 use parachain_template_runtime::{
-	AccountId, AuraId, EthereumChainIdConfig, Signature, EXISTENTIAL_DEPOSIT,
+	AccountId, EthereumChainIdConfig, Signature, EXISTENTIAL_DEPOSIT,
 };
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
 use sp_core::{sr25519, Pair, Public, H160, U256};
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use primitives::nimbus_primitives::NimbusId;
 
 /// Specialized `ChainSpec` for the normal parachain runtime.
 pub type ChainSpec =
@@ -46,8 +47,8 @@ type AccountPublic = <Signature as Verify>::Signer;
 /// Generate collator keys from seed.
 ///
 /// This function's return type must always match the session keys of the chain in tuple format.
-pub fn get_collator_keys_from_seed(seed: &str) -> AuraId {
-	get_from_seed::<AuraId>(seed)
+pub fn get_collator_keys_from_seed(seed: &str) -> NimbusId {
+	get_pair_from_seed::<NimbusId>(seed)
 }
 
 /// Helper function to generate an account ID from seed
@@ -55,14 +56,7 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
 where
 	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
-	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
-}
-
-/// Generate the session keys from individual elements.
-///
-/// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn template_session_keys(keys: AuraId) -> parachain_template_runtime::SessionKeys {
-	parachain_template_runtime::SessionKeys { aura: keys }
+	AccountPublic::from(get_pair_from_seed::<TPublic>(seed)).into_account()
 }
 
 pub fn development_config() -> ChainSpec {
@@ -106,7 +100,7 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				1000.into(),
+				2000.into(),
 				42,
 			)
 		},
@@ -116,8 +110,8 @@ pub fn development_config() -> ChainSpec {
 		None,
 		None,
 		Extensions {
-			relay_chain: "rococo-local".into(), // You MUST set this to the correct network!
-			para_id: 1000,
+			relay_chain: "cherry-local".into(), // You MUST set this to the correct network!
+			para_id: 2000,
 		},
 	)
 }
@@ -163,7 +157,7 @@ pub fn local_testnet_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				1000.into(),
+				2000.into(),
 				42,
 			)
 		},
@@ -179,15 +173,15 @@ pub fn local_testnet_config() -> ChainSpec {
 		Some(properties),
 		// Extensions
 		Extensions {
-			relay_chain: "rococo-local".into(), // You MUST set this to the correct network!
-			para_id: 1000,
+			relay_chain: "cherry-local".into(), // You MUST set this to the correct network!
+			para_id: 2000,
 		},
 	)
 }
 
 fn testnet_genesis(
+	authorities: Vec<(AccountId, NimbusId)>,
 	sudo_key: AccountId,
-	invulnerables: Vec<(AccountId, AuraId)>,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
 	chain_id: u64,
@@ -202,28 +196,12 @@ fn testnet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
 		parachain_info: parachain_template_runtime::ParachainInfoConfig { parachain_id: id },
-		collator_selection: parachain_template_runtime::CollatorSelectionConfig {
-			invulnerables: invulnerables.iter().cloned().map(|(acc, _)| acc).collect(),
-			candidacy_bond: EXISTENTIAL_DEPOSIT * 16,
-			..Default::default()
+		author_filter: parachain_template_runtime::AuthorFilterConfig {
+			eligible_count: parachain_template_runtime::EligibilityValue::default(),
 		},
-		session: parachain_template_runtime::SessionConfig {
-			keys: invulnerables
-				.into_iter()
-				.map(|(acc, aura)| {
-					(
-						acc.clone(),                 // account id
-						acc,                         // validator id
-						template_session_keys(aura), // session keys
-					)
-				})
-				.collect(),
+		potential_author_set: parachain_template_runtime::PotentialAuthorSetConfig {
+			mapping: authorities,
 		},
-		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
-		// of this.
-		aura: Default::default(),
-		aura_ext: Default::default(),
-		parachain_system: Default::default(),
 		polkadot_xcm: parachain_template_runtime::PolkadotXcmConfig {
 			safe_xcm_version: Some(SAFE_XCM_VERSION),
 		},
@@ -274,7 +252,6 @@ fn testnet_genesis(
 		},
 		ethereum: Default::default(),
 		ethereum_chain_id: EthereumChainIdConfig { chain_id },
-		base_fee: Default::default(),
 		sudo: parachain_template_runtime::SudoConfig { key: Some(sudo_key) },
 	}
 }
