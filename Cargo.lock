@@ -6615,6 +6615,7 @@ dependencies = [
  "frame-benchmarking-cli",
  "jsonrpsee",
  "log",
+ "nimbus-primitives",
  "pallet-transaction-payment-rpc",
  "parachain-template-runtime",
  "parity-scale-codec",
