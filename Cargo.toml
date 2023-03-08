@@ -7,4 +7,6 @@ members = [
 	"pallets/*",
 	"runtime",
 	"primitives",
+	"primitives/nimbus-primitives",
+	"node/cli-opt",
 ]
