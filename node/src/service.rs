@@ -184,7 +184,7 @@ where
 		transaction_pool,
 		select_chain: (),
 		other: (block_import, telemetry, telemetry_worker_handle),
-	})
+	};
 }
 
 /// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
