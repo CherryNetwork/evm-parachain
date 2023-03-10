@@ -19,4 +19,4 @@ url = "2.2.2"
 cherry-evm-primitives = { path = "../../primitives", default-features = false }
 
 # Substrate
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
+sp-runtime = { git = "https://github.com/PureStake/substrate", branch = "moonbeam-polkadot-v0.9.37" }
