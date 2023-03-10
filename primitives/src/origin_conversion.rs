@@ -29,7 +29,10 @@ where
 	fn convert(account: AccountId) -> MultiLocation {
 		MultiLocation {
 			parents: 0,
-			interior: X1(AccountKey20 { network: NetworkId::Any, key: account.into() }),
+			interior: X1(AccountKey20 {
+				network: NetworkId::Any,
+				key: account.into(),
+			}),
 		}
 	}
 }
@@ -47,8 +50,11 @@ where
 {
 	fn convert(o: Origin) -> Result<MultiLocation, Origin> {
 		o.try_with_caller(|caller| match caller.try_into() {
-			Ok(frame_system::RawOrigin::Signed(who)) =>
-				Ok(AccountKey20 { key: who.into(), network: Network::get() }.into()),
+			Ok(frame_system::RawOrigin::Signed(who)) => Ok(AccountKey20 {
+				key: who.into(),
+				network: Network::get(),
+			}
+			.into()),
 			Ok(other) => Err(other.into()),
 			Err(other) => Err(other),
 		})

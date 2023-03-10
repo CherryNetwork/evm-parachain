@@ -16,7 +16,8 @@
 
 use codec::Encode;
 use sp_io::hashing::blake2_256;
-use sp_std::{borrow::Borrow, marker::PhantomData};
+use sp_std::borrow::Borrow;
+use sp_std::marker::PhantomData;
 use xcm::latest::MultiLocation;
 
 use xcm_executor::traits::Convert;
@@ -28,7 +29,9 @@ impl<AccountId: From<[u8; 20]> + Into<[u8; 20]> + Clone> Convert<MultiLocation, 
 	for Account20Hash<AccountId>
 {
 	fn convert_ref(location: impl Borrow<MultiLocation>) -> Result<AccountId, ()> {
-		let hash: [u8; 32] = ("multiloc", location.borrow()).borrow().using_encoded(blake2_256);
+		let hash: [u8; 32] = ("multiloc", location.borrow())
+			.borrow()
+			.using_encoded(blake2_256);
 		let mut account_id = [0u8; 20];
 		account_id.copy_from_slice(&hash[0..20]);
 		Ok(account_id.into())
