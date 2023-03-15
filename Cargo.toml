@@ -8,5 +8,5 @@ members = [
 	"runtime",
 	"primitives",
 	"primitives/nimbus-primitives",
-	"node/cli-opt",
+	"cli-opt",
 ]

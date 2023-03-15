@@ -5802,7 +5802,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/PureStake/open-runtime-module-library.git?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
+source = "git+https://github.com/PureStake/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -5820,7 +5820,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/PureStake/open-runtime-module-library.git?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
+source = "git+https://github.com/PureStake/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -5834,7 +5834,7 @@ dependencies = [
 [[package]]
 name = "orml-xcm-support"
 version = "0.4.1-dev"
-source = "git+https://github.com/PureStake/open-runtime-module-library.git?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
+source = "git+https://github.com/PureStake/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
 dependencies = [
  "frame-support",
  "orml-traits",
@@ -5848,7 +5848,7 @@ dependencies = [
 [[package]]
 name = "orml-xtokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/PureStake/open-runtime-module-library.git?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
+source = "git+https://github.com/PureStake/open-runtime-module-library?branch=moonbeam-polkadot-v0.9.37#536b291262dbd2c28c7464b24dbb7a83678a4906"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -7064,6 +7064,7 @@ dependencies = [
  "async-io",
  "bip32",
  "clap",
+ "cli-opt",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -7083,7 +7084,9 @@ dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "futures 0.3.26",
+ "hex-literal",
  "jsonrpsee",
+ "libsecp256k1",
  "log",
  "maplit",
  "nimbus-consensus",
@@ -7113,6 +7116,7 @@ dependencies = [
  "sc-transaction-pool",
  "sc-transaction-pool-api",
  "serde",
+ "sha3 0.10.6",
  "sp-api",
  "sp-block-builder",
  "sp-blockchain",

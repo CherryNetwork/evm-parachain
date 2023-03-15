@@ -3,47 +3,35 @@
 // std
 use std::{
 	collections::BTreeMap,
-	future,
 	sync::{Arc, Mutex},
 	time::Duration,
 };
 
-use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
+use cli_opt::RpcConfig;
 use fc_rpc_core::types::{FeeHistoryCache, FilterPool};
 use fc_consensus::FrontierBlockImport;
 use fc_db::DatabaseSource;
 use futures::StreamExt;
 use maplit::hashmap;
-use jsonrpsee::RpcModule;
 use nimbus_consensus::NimbusManualSealConsensusDataProvider;
 use nimbus_consensus::{BuildNimbusConsensusParams, NimbusConsensus};
 use cumulus_client_cli::CollatorOptions;
 // Local Runtime Types
 use parachain_template_runtime::{
-	opaque::Block, AccountId, Balance, Hash, Index as Nonce, RuntimeApi,
+	opaque::Block, AccountId, Balance, Hash, Index,
 };
 
 // Cumulus Imports
-use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::{
-	ParachainBlockImport as TParachainBlockImport, ParachainConsensus,
-};
-use cumulus_client_network::BlockAnnounceValidator;
-use cumulus_client_service::{
-	prepare_node_config, start_collator, start_full_node,
-	StartCollatorParams, StartFullNodeParams,
-};
+use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
+use cumulus_relay_chain_interface::RelayChainInterface;
 
-use sc_client_api::BlockchainEvents;
+use polkadot_service::Client;
 // Substrate Imports
-use sc_consensus::ImportQueue;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
-use sc_network_common::service::NetworkBlock;
 use sc_service::{
-	BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
+	error::Error as ServiceError, BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
@@ -88,14 +76,13 @@ impl sc_executor::NativeExecutionDispatch for ParachainNativeExecutor {
 	}
 }
 
-pub fn frontier_database_dir(config: &Configuration) -> std::path::PathBuf {
-	config
+pub fn frontier_database_dir(config: &Configuration, path: &str) -> std::path::PathBuf {
+	let config_dir = config
 		.base_path
 		.as_ref()
 		.map(|base_path| base_path.config_dir(config.chain_spec.id()))
 		.unwrap_or_else(|| {
-			BasePath::from_project("", "", &crate::cli::Cli::executable_name())
-				.config_dir(config.chain_spec.id())
+			BasePath::from_project("", "", "evm-parachain").config_dir(config.chain_spec.id())
 		});
 	config_dir.join("frontier").join(path)
 }
@@ -137,7 +124,7 @@ where
 	)?))
 }
 
-use sp_runtime::traits::Percent;
+use sp_runtime::Percent;
 use sp_trie::PrefixedMemoryDB;
 
 pub const SOFT_DEADLINE_PERCENT: Percent = Percent::from_percent(100);
@@ -171,12 +158,23 @@ fn new_chain_ops_inner<RuntimeApi, Executor>(
 	ServiceError,
 >
 where
-	Client: From<Arc<crate::FullClient<RuntimeApi, Executor>>>,
-	RuntimeApi:
-		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
-	Executor: ExecutorT + 'static,
+	Client: From<Arc<FullClient<RuntimeApi, Executor>>>,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>
+		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+		+ sp_api::Metadata<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_session::SessionKeys<Block>
+		+ fp_rpc::ConvertTransactionRuntimeApi<Block>
+		+ fp_rpc::EthereumRuntimeRPCApi<Block>
+		+ cumulus_primitives_core::CollectCollationInfo<Block>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
 	let PartialComponents {
@@ -384,13 +382,12 @@ async fn build_relay_chain_interface(
 ///
 /// This is the actual implementation that is abstract over the executor and the runtime api.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
-async fn start_node<RuntimeApi, Executor, BIC>(
+pub async fn start_node_impl<RuntimeApi, Executor, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	para_id: ParaId,
 	rpc_config: RpcConfig,
 	hwbench: Option<sc_sysinfo::HwBench>,
-	build_consensus: BIC,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<FullClient<RuntimeApi, Executor>>
