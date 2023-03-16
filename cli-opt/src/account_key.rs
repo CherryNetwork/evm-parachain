@@ -72,7 +72,7 @@ impl GenerateAccountKey {
 		let public_key = PublicKey::from_secret_key(&private_key);
 
 		// Convert into Ethereum-style address.
-		let signer: cherry_evm_primitives::account::EthereumSigner = public_key.into();
+		let signer: account::EthereumSigner = public_key.into();
 		let address = signer.into_account();
 
 		println!("Address:      {:?}", address);

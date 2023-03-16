@@ -21,8 +21,7 @@ use xcm_builder::{
 	TakeWeightCredit, UsingComponents,
 };
 
-use cherry_evm_primitives::{
-	currency::{CurrencyId::Erc20, EvmAddress, TokenSymbol::*},
+use currency::{{CurrencyId::Erc20, EvmAddress, TokenSymbol::*},
 	origin_conversion::SignedToAccountId20,
 };
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
@@ -191,7 +190,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 }
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
-		use cherry_evm_primitives::currency::TokenSymbol::*;
+		use currency::TokenSymbol::*;
 		use crate::CurrencyId::Token;
 
 		if location == MultiLocation::parent() {

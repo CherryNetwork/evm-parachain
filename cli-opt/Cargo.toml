@@ -16,7 +16,7 @@ tiny-bip39 = "0.8"
 url = "2.2.2"
 
 # Local
-cherry-evm-primitives = { path = "../primitives", default-features = false }
+account = { path = "../primitives/account" }
 
 # Substrate
 sp-runtime = { git = "https://github.com/PureStake/substrate", branch = "moonbeam-polkadot-v0.9.37" }

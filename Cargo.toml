@@ -6,7 +6,11 @@ members = [
 	"node",
 	"pallets/*",
 	"runtime",
-	"primitives",
+	"primitives/account",
+	"primitives/ext",
+	"primitives/xcm",
+	"primitives/rpc/*",
+	"primitives/currency",
 	"primitives/nimbus-primitives",
 	"cli-opt",
 ]

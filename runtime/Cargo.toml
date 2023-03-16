@@ -22,10 +22,11 @@ scale-info = { version = "2.3.1", default-features = false, features = ["derive"
 smallvec = "1.10.0"
 
 # Local
-cherry-evm-primitives = { path = "../primitives", default-features = false }
 nimbus-primitives = { path = "../primitives/nimbus-primitives", default-features = false }
 pallet-author-inherent = { path = "../pallets/author-inherent", default-features = false }
 pallet-author-slot-filter = { path = "../pallets/author-slot-filter", default-features = false }
+account = { path = "../primitives/account", default-features = false }
+currency = { path = "../primitives/currency", default-features = false }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/PureStake/substrate", default-features = false, optional = true, branch = "moonbeam-polkadot-v0.9.37" }
@@ -114,7 +115,6 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"orml-xtokens/std",
-	"cherry-evm-primitives/std",
 	"pallet-aura/std",
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
@@ -153,6 +153,7 @@ std = [
 	"nimbus-primitives/std",
 	"pallet-author-inherent/std",
 	"pallet-author-slot-filter/std",
+	"currency/std",
 ]
 
 runtime-benchmarks = [

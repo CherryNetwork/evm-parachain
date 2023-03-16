@@ -24,7 +24,7 @@
 //!    block including the first digest.
 
 use crate::{NimbusId, NimbusSignature, NIMBUS_ENGINE_ID};
-use parity_scale_codec::Encode;
+use codec::Encode;
 use sp_runtime::generic::DigestItem;
 
 /// A digest item which is usable with aura consensus.
