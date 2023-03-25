@@ -27,6 +27,7 @@ pallet-author-inherent = { path = "../pallets/author-inherent", default-features
 pallet-author-slot-filter = { path = "../pallets/author-slot-filter", default-features = false }
 account = { path = "../primitives/account", default-features = false }
 currency = { path = "../primitives/currency", default-features = false }
+xcm-primitives = { path = "../primitives/xcm", default-features = false }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/PureStake/substrate", default-features = false, optional = true, branch = "moonbeam-polkadot-v0.9.37" }
@@ -154,6 +155,7 @@ std = [
 	"pallet-author-inherent/std",
 	"pallet-author-slot-filter/std",
 	"currency/std",
+	"xcm-primitives/std",
 ]
 
 runtime-benchmarks = [

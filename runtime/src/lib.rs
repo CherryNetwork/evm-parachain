@@ -64,7 +64,8 @@ use polkadot_runtime_common::SlowAdjustingFeeUpdate;
 use weights::{ExtrinsicBaseWeight, RocksDbWeight};
 
 // XCM Imports
-use account::{EthereumSignature, currency::CurrencyId};
+use account::EthereumSignature;
+use currency::CurrencyId;
 use xcm_executor::XcmExecutor;
 
 mod account_set;

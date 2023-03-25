@@ -1,27 +1,27 @@
 [package]
 name = "currency"
 version = "0.1.0"
+authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
 bstringify = "0.1.2"
-serde = { version = "1.0.101", optional = true }
+serde = { version = "1.0.151", optional = true, default-features = false, features = [ "derive" ] }
 
 # Substrate
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+scale-info = { version = "2.1", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/PureStake/substrate", branch = "moonbeam-polkadot-v0.9.37", default-features = false }
 sp-std = { git = "https://github.com/PureStake/substrate", branch = "moonbeam-polkadot-v0.9.37", default-features = false }
-
-[dev-dependencies]
-
+sp-core = { git = "https://github.com/PureStake/substrate", branch = "moonbeam-polkadot-v0.9.37", default-features = false }
 
 [features]
 default = ["std"]
 std = [
    "codec/std",
    "scale-info/std",
-   "sp-runtime/std",
    "sp-std/std",
-   "serde",
+   "sp-runtime/std",
+   "sp-core/std",
+   "serde/std",
 ]

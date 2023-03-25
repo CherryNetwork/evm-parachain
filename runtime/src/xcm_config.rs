@@ -21,9 +21,8 @@ use xcm_builder::{
 	TakeWeightCredit, UsingComponents,
 };
 
-use currency::{{CurrencyId::Erc20, EvmAddress, TokenSymbol::*},
-	origin_conversion::SignedToAccountId20,
-};
+use currency::{CurrencyId::Erc20, EvmAddress, TokenSymbol::*};
+use xcm_primitives::origin_conversion::SignedToAccountId20;
 use xcm_executor::{traits::ShouldExecute, XcmExecutor};
 use crate::{Balance, CurrencyId, DealWithFees};
 use sp_std::{

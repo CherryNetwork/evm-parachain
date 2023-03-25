@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2022 Acala Foundation.
+// Copyright (C) 2020-2023 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,16 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::from_over_into)]
 
 use bstringify::bstringify;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_runtime::{app_crypto::sp_core, RuntimeDebug};
-use sp_std::{
-	convert::{Into, TryFrom},
-	prelude::*,
-};
+use sp_runtime::RuntimeDebug;
+use sp_std::prelude::*;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -33,7 +31,7 @@ use serde::{Deserialize, Serialize};
 pub type EvmAddress = sp_core::H160;
 
 macro_rules! create_currency_id {
-    ($(#[$meta:meta])*
+	($(#[$meta:meta])*
 	$vis:vis enum TokenSymbol {
         $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
     }) => {
@@ -111,8 +109,8 @@ macro_rules! create_currency_id {
 }
 
 create_currency_id! {
-   #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 	#[repr(u8)]
    pub enum TokenSymbol {
 	  CHER("Cherry", 18) = 0,
@@ -127,8 +125,8 @@ pub trait TokenInfo {
 	fn decimals(&self) -> Option<u8>;
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
 	Token(TokenSymbol),

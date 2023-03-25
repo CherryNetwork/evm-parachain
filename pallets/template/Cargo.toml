@@ -21,7 +21,7 @@ frame-support = { git = "https://github.com/PureStake/substrate", default-featur
 frame-system = { git = "https://github.com/PureStake/substrate", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 
 [dev-dependencies]
-serde = { version = "1.0.132" }
+serde = { version = "1.0.151" }
 
 # Substrate
 sp-core = { git = "https://github.com/PureStake/substrate", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
