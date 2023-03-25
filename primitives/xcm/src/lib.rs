@@ -1,7 +1,7 @@
 // Copyright 2019-2022 PureStake Inc.
 // This file is part of Moonbeam.
 
-// Moonbeam is free software: you can redistribute it and/or modify
+// Moonbeam is free software: you can redistribute it and/or pub modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
@@ -17,28 +17,28 @@
 //! The XCM primitive trait implementations
 
 #![cfg_attr(not(feature = "std"), no_std)]
-mod barriers;
+pub mod barriers;
 pub use barriers::*;
 
-mod fee_handlers;
+pub mod fee_handlers;
 pub use fee_handlers::*;
 
-mod location_conversion;
+pub mod location_conversion;
 pub use location_conversion::*;
 
-mod origin_conversion;
+pub mod origin_conversion;
 pub use origin_conversion::*;
 
-mod transactor_traits;
+pub mod transactor_traits;
 pub use transactor_traits::*;
 
-mod ethereum_xcm;
+pub mod ethereum_xcm;
 pub use ethereum_xcm::*;
 
-mod filter_asset_max_fee;
+pub mod filter_asset_max_fee;
 pub use filter_asset_max_fee::*;
 
-mod xcm_execution_traits;
+pub mod xcm_execution_traits;
 pub use xcm_execution_traits::*;
 
 pub type XcmV2Weight = xcm::v2::Weight;
