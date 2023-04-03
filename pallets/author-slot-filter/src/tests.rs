@@ -15,11 +15,9 @@
 // along with Nimbus.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::mock::*;
-use crate::num::NonZeroU32;
+use crate::{mock::*, num::NonZeroU32};
 
-use frame_support::assert_ok;
-use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+use frame_support::{assert_ok, traits::OnRuntimeUpgrade, weights::Weight};
 use sp_runtime::Percent;
 
 #[test]
@@ -27,10 +25,7 @@ fn test_set_eligibility_works() {
 	new_test_ext().execute_with(|| {
 		let value = num::NonZeroU32::new_unchecked(34);
 
-		assert_ok!(AuthorSlotFilter::set_eligible(
-			RuntimeOrigin::root(),
-			value.clone()
-		));
+		assert_ok!(AuthorSlotFilter::set_eligible(RuntimeOrigin::root(), value.clone()));
 		assert_eq!(AuthorSlotFilter::eligible_count(), value)
 	});
 }

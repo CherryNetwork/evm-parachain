@@ -151,11 +151,9 @@ pub mod pallet {
 		fn is_inherent_required(_: &InherentData) -> Result<Option<Self::Error>, Self::Error> {
 			// Return Ok(Some(_)) unconditionally because this inherent is required in every block
 			// If it is not found, throw an AuthorInherentRequired error.
-			Ok(Some(InherentError::Other(
-				sp_runtime::RuntimeString::Borrowed(
-					"Inherent required to manually initiate author validation",
-				),
-			)))
+			Ok(Some(InherentError::Other(sp_runtime::RuntimeString::Borrowed(
+				"Inherent required to manually initiate author validation",
+			))))
 		}
 
 		// Regardless of whether the client is still supplying the author id,
@@ -182,7 +180,7 @@ pub mod pallet {
 					let author_account = T::AccountLookup::lookup_account(&author_id)
 						.expect("No Account Mapped to this NimbusId");
 
-					return Some(author_account);
+					return Some(author_account)
 				}
 			}
 
@@ -203,9 +201,7 @@ pub mod pallet {
 			let account = match T::AccountLookup::lookup_account(author) {
 				Some(account) => account,
 				// Authors whose account lookups fail will not be eligible
-				None => {
-					return false;
-				}
+				None => return false,
 			};
 
 			T::CanAuthor::can_author(&account, slot)

@@ -15,18 +15,18 @@
 // along with Nimbus.  If not, see <http://www.gnu.org/licenses/>.
 
 use core::marker::PhantomData;
-use frame_support::traits::Get;
-use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::weights::Weight;
+use frame_support::{
+	traits::{Get, OnRuntimeUpgrade},
+	weights::Weight,
+};
 use parity_scale_codec::{Decode, Encode};
 use sp_runtime::Percent;
 use sp_std::vec::Vec;
 
-use super::num::NonZeroU32;
-use super::pallet::Config;
-use super::pallet::EligibilityValue;
-use super::pallet::EligibleCount;
-use super::pallet::Pallet;
+use super::{
+	num::NonZeroU32,
+	pallet::{Config, EligibilityValue, EligibleCount, Pallet},
+};
 pub struct EligibleRatioToEligiblityCount<T>(PhantomData<T>);
 
 impl<T> OnRuntimeUpgrade for EligibleRatioToEligiblityCount<T>
@@ -75,8 +75,7 @@ fn percent_of_num(percent: Percent, num: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-	use super::percent_of_num;
-	use super::*;
+	use super::{percent_of_num, *};
 
 	#[test]
 	fn test_percent_of_num_ceils_value() {

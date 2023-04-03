@@ -19,8 +19,7 @@
 
 use parity_scale_codec::{Decode, Encode, Error, Input};
 use scale_info::TypeInfo;
-use serde::de::Error as DeserializeError;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error as DeserializeError, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Clone, Debug, TypeInfo, Encode, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonZeroU32(u32);

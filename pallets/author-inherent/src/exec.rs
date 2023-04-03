@@ -49,17 +49,12 @@ where
 		debug!(target: "executive", "In hacked Executive. Initial digests are {:?}", header.digest());
 
 		// Set the seal aside for checking.
-		let seal = header
-			.digest_mut()
-			.pop()
-			.expect("Seal digest is present and is last item");
+		let seal = header.digest_mut().pop().expect("Seal digest is present and is last item");
 
 		debug!(target: "executive", "In hacked Executive. digests after stripping {:?}", header.digest());
 		debug!(target: "executive", "The seal we got {:?}", seal);
 
-		let signature = seal
-			.as_nimbus_seal()
-			.unwrap_or_else(|| panic!("HeaderUnsealed"));
+		let signature = seal.as_nimbus_seal().unwrap_or_else(|| panic!("HeaderUnsealed"));
 
 		debug!(target: "executive", "🪲 Header hash after popping digest {:?}", header.hash());
 
@@ -72,9 +67,8 @@ where
 			.logs
 			.iter()
 			.find_map(|digest| match *digest {
-				DigestItem::PreRuntime(id, ref author_id) if id == NIMBUS_ENGINE_ID => {
-					Some(author_id.clone())
-				}
+				DigestItem::PreRuntime(id, ref author_id) if id == NIMBUS_ENGINE_ID =>
+					Some(author_id.clone()),
 				_ => None,
 			})
 			.expect("Expected pre-runtime digest that contains author id bytes");

@@ -44,8 +44,7 @@ mod tests;
 #[pallet]
 pub mod pallet {
 
-	use crate::num::NonZeroU32;
-	use crate::weights::WeightInfo;
+	use crate::{num::NonZeroU32, weights::WeightInfo};
 	use frame_support::{pallet_prelude::*, traits::Randomness};
 	use frame_system::pallet_prelude::*;
 	use log::debug;
@@ -207,9 +206,7 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl Default for GenesisConfig {
 		fn default() -> Self {
-			Self {
-				eligible_count: EligibilityValue::default(),
-			}
+			Self { eligible_count: EligibilityValue::default() }
 		}
 	}
 

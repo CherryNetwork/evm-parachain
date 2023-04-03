@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Nimbus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::mock::*;
-use crate::pallet::Author;
+use crate::{mock::*, pallet::Author};
 use frame_support::traits::{OnFinalize, OnInitialize};
 use nimbus_primitives::{NimbusId, NIMBUS_ENGINE_ID};
 use parity_scale_codec::Encode;

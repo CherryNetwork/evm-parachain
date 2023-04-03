@@ -15,10 +15,7 @@
 // along with Nimbus.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate as pallet_testing;
-use frame_support::parameter_types;
-use frame_support::sp_io;
-use frame_support::traits::ConstU32;
-use frame_support::weights::RuntimeDbWeight;
+use frame_support::{parameter_types, sp_io, traits::ConstU32, weights::RuntimeDbWeight};
 use frame_support_test::TestRandomness;
 use sp_core::H256;
 use sp_runtime::{
@@ -85,8 +82,5 @@ impl pallet_testing::Config for Test {
 
 /// Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
-		.unwrap()
-		.into()
+	frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
