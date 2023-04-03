@@ -12,27 +12,25 @@ pub mod xcm_config;
 use codec::{Decode, Encode};
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use fp_rpc::TransactionStatus;
-use frame_support::traits::{OnUnbalanced, FindAuthor, Len, Imbalance};
+use frame_support::traits::{FindAuthor, Imbalance, Len, OnUnbalanced};
+use pallet_balances::NegativeImbalance;
 use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
 use pallet_evm::{
-	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
-	Runner, OnChargeEVMTransaction as OnChargeEVMTransactionT, EVMCurrencyAdapter
+	Account as EVMAccount, EVMCurrencyAdapter, EnsureAddressNever, EnsureAddressRoot,
+	FeeCalculator, OnChargeEVMTransaction as OnChargeEVMTransactionT, Runner,
 };
 pub use pallet_transaction_payment::Multiplier;
-use pallet_balances::NegativeImbalance;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{
-	OpaqueMetadata, H160, H256, U256, Get
-};
+use sp_core::{Get, OpaqueMetadata, H160, H256, U256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		BlakeTwo256, Block as BlockT, Dispatchable, IdentifyAccount,
-		IdentityLookup, UniqueSaturatedInto, Verify, DispatchInfoOf, PostDispatchInfoOf
+		BlakeTwo256, Block as BlockT, DispatchInfoOf, Dispatchable, IdentifyAccount,
+		IdentityLookup, PostDispatchInfoOf, UniqueSaturatedInto, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-	ApplyExtrinsicResult, Perquintill, FixedPointNumber
+	ApplyExtrinsicResult, FixedPointNumber, Perquintill,
 };
 
 use sp_std::prelude::*;
@@ -44,14 +42,13 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{ConstU16, ConstU32, ConstU64, ConstU8, ConstU128, Currency as CurrencyT, Everything},
+	traits::{ConstU128, ConstU16, ConstU32, ConstU64, ConstU8, Currency as CurrencyT, Everything},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
 	},
 };
-use frame_system::
-	EnsureRoot;
+use frame_system::EnsureRoot;
 pub use sp_runtime::{MultiAddress, Perbill, Permill};
 use xcm_config::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
@@ -70,9 +67,9 @@ use xcm_executor::XcmExecutor;
 
 mod account_set;
 mod precompiles;
-use precompiles::CherryPrecompiles;
 use nimbus_primitives::CanAuthor;
 pub use pallet_author_slot_filter::EligibilityValue;
+use precompiles::CherryPrecompiles;
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
 pub type Signature = EthereumSignature;
@@ -124,7 +121,8 @@ pub type UncheckedExtrinsic =
 	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
+pub type CheckedExtrinsic =
+	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -405,7 +403,8 @@ impl WeightToFeePolynomial for LengthToFee {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<Balances, DealWithFees<Runtime>>;
+	type OnChargeTransaction =
+		pallet_transaction_payment::CurrencyAdapter<Balances, DealWithFees<Runtime>>;
 	type WeightToFee = ConstantMultiplier<Balance, ConstU128<{ WEIGHT_FEE }>>;
 	type LengthToFee = LengthToFee;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Runtime>;
@@ -500,7 +499,7 @@ where
 	PositiveImbalanceFor<T>: Imbalance<BalanceFor<T>, Opposite = NegativeImbalanceFor<T>>,
 	NegativeImbalanceFor<T>: Imbalance<BalanceFor<T>, Opposite = PositiveImbalanceFor<T>>,
 	OU: OnUnbalanced<NegativeImbalanceFor<T>>,
-	U256: UniqueSaturatedInto<BalanceFor<T>>
+	U256: UniqueSaturatedInto<BalanceFor<T>>,
 {
 	type LiquidityInfo = Option<NegativeImbalanceFor<T>>;
 
@@ -694,9 +693,7 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		}
 	}
 
-	fn check_self_contained(
-		&self
-	) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
+	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
 		match self {
 			RuntimeCall::Ethereum(call) => call.check_self_contained(),
 			_ => None,
@@ -710,7 +707,8 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		len: usize,
 	) -> Option<TransactionValidity> {
 		match self {
-			RuntimeCall::Ethereum(call) => call.validate_self_contained(signed_info, dispatch_info, len),
+			RuntimeCall::Ethereum(call) =>
+				call.validate_self_contained(signed_info, dispatch_info, len),
 			_ => None,
 		}
 	}
@@ -722,7 +720,8 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		len: usize,
 	) -> Option<Result<(), TransactionValidityError>> {
 		match self {
-			RuntimeCall::Ethereum(call) => call.pre_dispatch_self_contained(info, dispatch_info, len),
+			RuntimeCall::Ethereum(call) =>
+				call.pre_dispatch_self_contained(info, dispatch_info, len),
 			_ => None,
 		}
 	}
@@ -732,11 +731,10 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		info: Self::SignedInfo,
 	) -> Option<sp_runtime::DispatchResultWithInfo<PostDispatchInfoOf<Self>>> {
 		match self {
-			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(
-				call.dispatch(RuntimeOrigin::from(
-					pallet_ethereum::RawOrigin::EthereumTransaction(info)
-				))
-			),
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) =>
+				Some(call.dispatch(RuntimeOrigin::from(
+					pallet_ethereum::RawOrigin::EthereumTransaction(info),
+				))),
 			_ => None,
 		}
 	}

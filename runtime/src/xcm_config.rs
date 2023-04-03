@@ -11,7 +11,10 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
 use orml_xcm_support::{IsNativeConcrete, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use sp_runtime::{traits::{ConstU32, Convert}, WeakBoundedVec};
+use sp_runtime::{
+	traits::{ConstU32, Convert},
+	WeakBoundedVec,
+};
 use xcm::latest::{prelude::*, Weight as XCMWeight};
 use xcm_builder::{
 	AccountKey20Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -21,16 +24,16 @@ use xcm_builder::{
 	TakeWeightCredit, UsingComponents,
 };
 
-use currency::{CurrencyId::Erc20, EvmAddress, TokenSymbol::*};
-use xcm_primitives::origin_conversion::SignedToAccountId20;
-use xcm_executor::{traits::ShouldExecute, XcmExecutor};
 use crate::{Balance, CurrencyId, DealWithFees};
+use currency::{CurrencyId::Erc20, EvmAddress, TokenSymbol::*};
+use sp_core::Get;
 use sp_std::{
 	convert::{From, Into, TryFrom},
-	vec::Vec,
 	prelude::*,
+	vec::Vec,
 };
-use sp_core::Get;
+use xcm_executor::{traits::ShouldExecute, XcmExecutor};
+use xcm_primitives::origin_conversion::SignedToAccountId20;
 
 parameter_types! {
 	pub const RelayLocation: MultiLocation = MultiLocation::parent();
@@ -189,8 +192,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 }
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
-		use currency::TokenSymbol::*;
 		use crate::CurrencyId::Token;
+		use currency::TokenSymbol::*;
 
 		if location == MultiLocation::parent() {
 			return Some(Token(CHER))
@@ -251,10 +254,7 @@ where
 	fn convert(account: AccountId) -> MultiLocation {
 		MultiLocation {
 			parents: 0,
-			interior: X1(AccountKey20 {
-				network: NetworkId::Any,
-				key: account.into(),
-			}),
+			interior: X1(AccountKey20 { network: NetworkId::Any, key: account.into() }),
 		}
 	}
 }

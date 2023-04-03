@@ -22,9 +22,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use sp_application_crypto::KeyTypeId;
-use sp_runtime::generic::DigestItem;
-use sp_runtime::traits::BlockNumberProvider;
-use sp_runtime::ConsensusEngineId;
+use sp_runtime::{generic::DigestItem, traits::BlockNumberProvider, ConsensusEngineId};
 #[cfg(feature = "runtime-benchmarks")]
 use sp_std::vec;
 use sp_std::vec::Vec;
