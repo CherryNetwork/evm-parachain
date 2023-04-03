@@ -23,11 +23,16 @@ maplit = "1.0.2"
 libsecp256k1 = { version = "0.7", features = [ "hmac" ] }
 sha3 = { version = "0.10", default-features = false }
 hex-literal = "0.3.4"
+tokio = { version = "1.13.0", features = [ "macros", "sync" ] }
+flume = "0.10.9"
 
 # Local
 parachain-template-runtime = { path = "../runtime" }
 nimbus-primitives = { path = "../primitives/nimbus-primitives", default-features = false }
 cli-opt = { path = "../cli-opt" }
+moonbeam-rpc-debug = { path = "../client/rpc/debug" }
+moonbeam-rpc-trace = { path = "../client/rpc/trace" }
+moonbeam-rpc-primitives-debug = { path = "../primitives/rpc/debug" }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/PureStake/substrate", branch = "moonbeam-polkadot-v0.9.37" }
@@ -83,6 +88,8 @@ cumulus-client-service = { git = "https://github.com/PureStake/cumulus.git", bra
 cumulus-primitives-core = { git = "https://github.com/PureStake/cumulus.git", branch = "moonbeam-polkadot-v0.9.37" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/PureStake/cumulus.git", branch = "moonbeam-polkadot-v0.9.37" }
 cumulus-relay-chain-interface = { git = "https://github.com/PureStake/cumulus.git", branch = "moonbeam-polkadot-v0.9.37" }
+cumulus-relay-chain-inprocess-interface = { git = "https://github.com/purestake/cumulus", branch = "moonbeam-polkadot-v0.9.37" }
+cumulus-relay-chain-minimal-node = { git = "https://github.com/purestake/cumulus", branch = "moonbeam-polkadot-v0.9.37" }
 nimbus-consensus = { git = "https://github.com/PureStake/nimbus.git", branch = "moonbeam-polkadot-v0.9.37" }
 
 # Frontier

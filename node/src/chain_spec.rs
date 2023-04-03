@@ -1,25 +1,23 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use bip32::ExtendedPrivateKey;
-use bip39::{Mnemonic, Language, Seed};
+use bip39::{Language, Mnemonic, Seed};
 use cli_opt::account_key::Secp256k1SecretKey;
+use cumulus_primitives_core::ParaId;
+use hex_literal::hex;
 use libsecp256k1::{PublicKey, PublicKeyFormat};
 use log::debug;
-use sha3::{Digest, Keccak256};
-use hex_literal::hex;
-use cumulus_primitives_core::ParaId;
-use parachain_template_runtime::{
-	AccountId, EthereumChainIdConfig,
-};
+use nimbus_primitives::NimbusId;
+use parachain_template_runtime::{AccountId, EthereumChainIdConfig};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
-use sp_core::{Pair, Public, H160, H256, U256, ecdsa};
-use nimbus_primitives::NimbusId;
+use sha3::{Digest, Keccak256};
+use sp_core::{ecdsa, Pair, Public, H160, H256, U256};
 
 /// Specialized `ChainSpec` for the normal parachain runtime.
 pub type ChainSpec =
-	sc_service::GenericChainSpec<(parachain_template_runtime::GenesisConfig), Extensions>;
+	sc_service::GenericChainSpec<parachain_template_runtime::GenesisConfig, Extensions>;
 
 pub type RawChainSpec = sc_service::GenericChainSpec<(), Extensions>;
 
@@ -123,9 +121,7 @@ pub fn development_config(mnemonic: Option<String>, num_accounts: Option<u32>) -
 		"bottom drive obey lake curtain smoke basket hold race lonely fit walk".to_string()
 	});
 	let mut accounts = generate_accounts(parent_mnemonic, num_accounts.unwrap_or(10));
-	accounts.push(AccountId::from(hex!(
-		"6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b"
-	)));
+	accounts.push(AccountId::from(hex!("6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b")));
 	ChainSpec::from_genesis(
 		// Name
 		"Cherry EVM Development Testnet",
@@ -173,12 +169,12 @@ pub fn local_testnet_config(para_id: ParaId) -> ChainSpec {
 				vec![
 					(
 						AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")),
-						get_from_seed::<NimbusId>("Alice")
+						get_from_seed::<NimbusId>("Alice"),
 					),
 					(
 						AccountId::from(hex!("3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0")),
 						get_from_seed::<NimbusId>("Bob"),
-					)
+					),
 				],
 				AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")),
 				vec![

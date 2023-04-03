@@ -5,26 +5,35 @@
 
 #![warn(missing_docs)]
 
+use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
 	SchemaV2Override, SchemaV3Override, StorageOverride,
 };
+use fp_rpc::EthereumRuntimeRPCApi;
+use futures::StreamExt;
 use jsonrpsee::RpcModule;
-use std::{collections::BTreeMap, sync::Arc};
+use sp_core::H256;
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use parachain_template_runtime::{opaque::Block, AccountId, Balance, Hash, Index as Nonce};
 
-use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit};
+use fc_rpc::EthTask;
+use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_storage::EthereumStorageSchema;
-use sc_client_api::backend::{AuxStore, Backend, StateBackend, StorageProvider};
+use sc_client_api::{
+	backend::{AuxStore, Backend, StateBackend, StorageProvider},
+	BlockOf, BlockchainEvents,
+};
 use sc_network::NetworkService;
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
+use sc_service::TaskManager;
 use sc_transaction_pool::{ChainApi, Pool};
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_runtime::traits::BlakeTwo256;
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Header as HeaderT};
 
 /// Full client dependencies
 pub struct FullDeps<C, P, A: ChainApi> {
@@ -40,6 +49,8 @@ pub struct FullDeps<C, P, A: ChainApi> {
 	pub is_authority: bool,
 	/// Network Service
 	pub network: Arc<NetworkService<Block, Hash>>,
+	/// EthFilterApi pool.
+	pub filter_pool: Option<FilterPool>,
 	/// Backend.
 	pub backend: Arc<fc_db::Backend<Block>>,
 	// /// Maximum number of logs in a query.
@@ -52,6 +63,11 @@ pub struct FullDeps<C, P, A: ChainApi> {
 	pub overrides: Arc<OverrideHandle<Block>>,
 	/// Cache for Ethereum block data.
 	pub block_data_cache: Arc<EthBlockDataCacheTask<Block>>,
+}
+
+pub struct TracingConfig {
+	pub tracing_requesters: crate::tracing::RpcRequesters,
+	pub trace_filter_max_count: u32,
 }
 
 pub fn overrides_handle<C, BE>(client: Arc<C>) -> Arc<OverrideHandle<Block>>
@@ -116,6 +132,7 @@ where
 		deny_unsafe,
 		is_authority,
 		network,
+		filter_pool,
 		backend,
 		// max_past_logs,
 		fee_history_cache,
@@ -150,4 +167,76 @@ where
 	)?;
 
 	Ok(io)
+}
+
+pub struct SpawnTasksParams<'a, B: BlockT, C, BE> {
+	pub task_manager: &'a TaskManager,
+	pub client: Arc<C>,
+	pub substrate_backend: Arc<BE>,
+	pub frontier_backend: Arc<fc_db::Backend<B>>,
+	pub filter_pool: Option<FilterPool>,
+	pub overrides: Arc<OverrideHandle<B>>,
+	pub fee_history_limit: u64,
+	pub fee_history_cache: FeeHistoryCache,
+}
+
+/// Spawn the tasks that are required to run Moonbeam.
+pub fn spawn_essential_tasks<B, C, BE>(params: SpawnTasksParams<B, C, BE>)
+where
+	C: ProvideRuntimeApi<B> + BlockOf,
+	C: HeaderBackend<B> + HeaderMetadata<B, Error = BlockChainError> + 'static,
+	C: BlockchainEvents<B> + StorageProvider<B, BE>,
+	C: Send + Sync + 'static,
+	C::Api: EthereumRuntimeRPCApi<B>,
+	C::Api: BlockBuilder<B>,
+	B: BlockT<Hash = H256> + Send + Sync + 'static,
+	B::Header: HeaderT<Number = u32>,
+	BE: Backend<B> + 'static,
+	BE::State: StateBackend<BlakeTwo256>,
+{
+	// Frontier offchain DB task. Essential.
+	// Maps emulated ethereum data to substrate native data.
+	params.task_manager.spawn_essential_handle().spawn(
+		"frontier-mapping-sync-worker",
+		Some("frontier"),
+		MappingSyncWorker::new(
+			params.client.import_notification_stream(),
+			Duration::new(6, 0),
+			params.client.clone(),
+			params.substrate_backend.clone(),
+			params.frontier_backend.clone(),
+			3,
+			0,
+			SyncStrategy::Parachain,
+		)
+		.for_each(|()| futures::future::ready(())),
+	);
+
+	// Frontier `EthFilterApi` maintenance.
+	// Manages the pool of user-created Filters.
+	if let Some(filter_pool) = params.filter_pool {
+		// Each filter is allowed to stay in the pool for 100 blocks.
+		const FILTER_RETAIN_THRESHOLD: u64 = 100;
+		params.task_manager.spawn_essential_handle().spawn(
+			"frontier-filter-pool",
+			Some("frontier"),
+			EthTask::filter_pool_task(
+				Arc::clone(&params.client),
+				filter_pool,
+				FILTER_RETAIN_THRESHOLD,
+			),
+		);
+	}
+
+	// Spawn Frontier FeeHistory cache maintenance task.
+	params.task_manager.spawn_essential_handle().spawn(
+		"frontier-fee-history",
+		Some("frontier"),
+		EthTask::fee_history_task(
+			Arc::clone(&params.client),
+			Arc::clone(&params.overrides),
+			params.fee_history_cache,
+			params.fee_history_limit,
+		),
+	);
 }

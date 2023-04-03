@@ -13,4 +13,7 @@ members = [
 	"primitives/currency",
 	"primitives/nimbus-primitives",
 	"cli-opt",
+	"client/evm-tracing",
+	"client/rpc/*",
+	"client/rpc-core/*",
 ]

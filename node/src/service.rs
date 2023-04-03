@@ -1,5 +1,7 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
+use crate::tracing::*;
+
 // std
 use std::{
 	collections::BTreeMap,
@@ -7,31 +9,42 @@ use std::{
 	time::Duration,
 };
 
-use cli_opt::RpcConfig;
-use fc_rpc_core::types::{FeeHistoryCache, FilterPool};
+use cli_opt::{EthApi, RpcConfig};
+use cumulus_client_cli::CollatorOptions;
+use cumulus_client_network::BlockAnnounceValidator;
 use fc_consensus::FrontierBlockImport;
 use fc_db::DatabaseSource;
+use fc_rpc_core::types::{FeeHistoryCache, FilterPool};
 use futures::StreamExt;
 use maplit::hashmap;
-use nimbus_consensus::NimbusManualSealConsensusDataProvider;
-use nimbus_consensus::{BuildNimbusConsensusParams, NimbusConsensus};
-use cumulus_client_cli::CollatorOptions;
-// Local Runtime Types
-use parachain_template_runtime::{
-	opaque::Block, AccountId, Balance, Hash, Index,
+use nimbus_consensus::{
+	BuildNimbusConsensusParams, NimbusConsensus, NimbusManualSealConsensusDataProvider,
 };
+use nimbus_primitives::NimbusId;
+use sc_client_api::ExecutorProvider;
+// Local Runtime Types
+use cumulus_primitives_parachain_inherent::{
+	MockValidationDataInherentDataProvider, MockXcmConfig,
+};
+use parachain_template_runtime::{opaque::Block, AccountId, Balance, Hash, Index};
 
 // Cumulus Imports
 use cumulus_client_consensus_common::ParachainConsensus;
-use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::RelayChainInterface;
+use cumulus_client_service::{
+	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
+};
+use cumulus_primitives_core::{relay_chain::v2::CollatorPair, ParaId};
+use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
+use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
+use cumulus_relay_chain_minimal_node::build_minimal_relay_chain_node;
 
 use polkadot_service::Client;
 // Substrate Imports
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
 use sc_service::{
-	error::Error as ServiceError, BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
+	config::PrometheusConfig, error::Error as ServiceError, BasePath, Configuration,
+	PartialComponents, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
@@ -93,6 +106,8 @@ impl ExecutorT for ParachainNativeExecutor {
 	}
 }
 
+// TODO This is copied from frontier. It should be imported instead after
+// https://github.com/paritytech/frontier/issues/333 is solved
 pub fn open_frontier_backend<C>(
 	client: Arc<C>,
 	config: &Configuration,
@@ -108,17 +123,15 @@ where
 					path: frontier_database_dir(config, "db"),
 					cache_size: 0,
 				},
-				DatabaseSource::ParityDb { .. } => DatabaseSource::ParityDb {
-					path: frontier_database_dir(config, "paritydb"),
-				},
+				DatabaseSource::ParityDb { .. } =>
+					DatabaseSource::ParityDb { path: frontier_database_dir(config, "paritydb") },
 				DatabaseSource::Auto { .. } => DatabaseSource::Auto {
 					rocksdb_path: frontier_database_dir(config, "db"),
 					paritydb_path: frontier_database_dir(config, "paritydb"),
 					cache_size: 0,
 				},
-				_ => {
-					return Err("Supported db sources: `rocksdb` | `paritydb` | `auto`".to_string())
-				}
+				_ =>
+					return Err("Supported db sources: `rocksdb` | `paritydb` | `auto`".to_string()),
 			},
 		},
 	)?))
@@ -158,11 +171,9 @@ fn new_chain_ops_inner<RuntimeApi, Executor>(
 	ServiceError,
 >
 where
-	Client: From<Arc<FullClient<RuntimeApi, Executor>>>,
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>>
-		+ Send
-		+ Sync
-		+ 'static,
+	Client: From<Arc<crate::service::FullClient<RuntimeApi, Executor>>>,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::ApiExt<Block>
 		+ sp_block_builder::BlockBuilder<Block>
@@ -174,22 +185,12 @@ where
 		+ fp_rpc::ConvertTransactionRuntimeApi<Block>
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	Executor: ExecutorT + 'static,
 {
 	config.keystore = sc_service::config::KeystoreConfig::InMemory;
-	let PartialComponents {
-		client,
-		backend,
-		import_queue,
-		task_manager,
-		..
-	} = new_partial::<RuntimeApi, Executor>(config, config.chain_spec.is_dev())?;
-	Ok((
-		Arc::new(Client::from(client)),
-		backend,
-		import_queue,
-		task_manager,
-	))
+	let PartialComponents { client, backend, import_queue, task_manager, .. } =
+		new_partial::<RuntimeApi, Executor>(config, false)?;
+	Ok((Arc::new(Client::from(client)), backend, import_queue, task_manager))
 }
 
 // If we're using prometheus, use a registry with a prefix of `moonbeam`.
@@ -235,10 +236,8 @@ pub fn new_partial<RuntimeApi, Executor>(
 	ServiceError,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::ApiExt<Block>
 		+ sp_block_builder::BlockBuilder<Block>
@@ -250,7 +249,7 @@ where
 		+ fp_rpc::ConvertTransactionRuntimeApi<Block>
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	Executor: ExecutorT + 'static,
 {
 	set_prometheus_registry(config)?;
 
@@ -327,7 +326,7 @@ where
 		},
 		&task_manager.spawn_essential_handle(),
 		config.prometheus_registry(),
-		!dev_service,
+		true,
 	)?;
 
 	Ok(PartialComponents {
@@ -356,10 +355,7 @@ async fn build_relay_chain_interface(
 	task_manager: &mut TaskManager,
 	collator_options: CollatorOptions,
 	hwbench: Option<sc_sysinfo::HwBench>,
-) -> RelayChainResult<(
-	Arc<(dyn RelayChainInterface + 'static)>,
-	Option<CollatorPair>,
-)> {
+) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
 	if !collator_options.relay_chain_rpc_urls.is_empty() {
 		build_minimal_relay_chain_node(
 			polkadot_config,
@@ -388,15 +384,11 @@ pub async fn start_node_impl<RuntimeApi, Executor, BIC>(
 	para_id: ParaId,
 	rpc_config: RpcConfig,
 	hwbench: Option<sc_sysinfo::HwBench>,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<RuntimeApi, Executor>>
-)>
+	build_consensus: BIC,
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::ApiExt<Block>
 		+ sp_block_builder::BlockBuilder<Block>
@@ -408,7 +400,7 @@ where
 		+ fp_rpc::ConvertTransactionRuntimeApi<Block>
 		+ fp_rpc::EthereumRuntimeRPCApi<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	Executor: ExecutorT + 'static,
 	BIC: FnOnce(
 		Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
 		Arc<sc_client_db::Backend<Block>>,
@@ -427,10 +419,268 @@ where
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
+	let mut parachain_config = prepare_node_config(parachain_config);
+
+	let collator_options =
+		CollatorOptions { relay_chain_rpc_urls: rpc_config.relay_chain_rpc_urls.clone() };
+
+	let params = new_partial(&mut parachain_config)?;
+	let (
+		_block_import,
+		filter_pool,
+		mut telemetry,
+		telemetry_worker_handle,
+		frontier_backend,
+		fee_history_cache,
+	) = params.other;
+
+	let client = params.client.clone();
+	let backend = params.backend.clone();
+	let mut task_manager = params.task_manager;
+
+	let (relay_chain_interface, collator_key) = build_relay_chain_interface(
+		polkadot_config,
+		&parachain_config,
+		telemetry_worker_handle,
+		&mut task_manager,
+		collator_options.clone(),
+		hwbench.clone(),
+	)
+	.await
+	.map_err(|e| match e {
+		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
+		s => s.to_string().into(),
+	})?;
+
+	let block_announce_validator =
+		BlockAnnounceValidator::new(relay_chain_interface.clone(), para_id);
+
+	let force_authoring = parachain_config.force_authoring;
+	let collator = parachain_config.role.is_authority();
+	let prometheus_registry = parachain_config.prometheus_registry().cloned();
+	let transaction_pool = params.transaction_pool.clone();
+	let import_queue_service = params.import_queue.service();
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &parachain_config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue: params.import_queue,
+			block_announce_validator_builder: Some(Box::new(|_| {
+				Box::new(block_announce_validator)
+			})),
+			warp_sync: None,
+		})?;
+
+	let overrides = crate::rpc::overrides_handle(client.clone());
+	let fee_history_limit = rpc_config.fee_history_limit;
+
+	crate::rpc::spawn_essential_tasks(crate::rpc::SpawnTasksParams {
+		task_manager: &task_manager,
+		client: client.clone(),
+		substrate_backend: backend.clone(),
+		frontier_backend: frontier_backend.clone(),
+		filter_pool: filter_pool.clone(),
+		overrides: overrides.clone(),
+		fee_history_limit,
+		fee_history_cache: fee_history_cache.clone(),
+	});
+
+	let ethapi_cmd = rpc_config.ethapi.clone();
+	let tracing_requesters =
+		if ethapi_cmd.contains(&EthApi::Debug) || ethapi_cmd.contains(&EthApi::Trace) {
+			spawn_tracing_tasks(
+				&rpc_config,
+				crate::rpc::SpawnTasksParams {
+					task_manager: &task_manager,
+					client: client.clone(),
+					substrate_backend: backend.clone(),
+					frontier_backend: frontier_backend.clone(),
+					filter_pool: filter_pool.clone(),
+					overrides: overrides.clone(),
+					fee_history_limit,
+					fee_history_cache: fee_history_cache.clone(),
+				},
+			)
+		} else {
+			crate::tracing::RpcRequesters { debug: None, trace: None }
+		};
+
+	let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
+		task_manager.spawn_handle(),
+		overrides.clone(),
+		rpc_config.eth_log_block_cache,
+		rpc_config.eth_statuses_cache,
+		prometheus_registry.clone(),
+	));
+
+	let rpc_builder = {
+		let client = client.clone();
+		let pool = transaction_pool.clone();
+		let network = network.clone();
+		let filter_pool = filter_pool.clone();
+		let frontier_backend = frontier_backend.clone();
+		let backend = backend.clone();
+		let ethapi_cmd = ethapi_cmd.clone();
+		let max_past_logs = rpc_config.max_past_logs;
+		let overrides = overrides.clone();
+		let fee_history_cache = fee_history_cache.clone();
+		let block_data_cache = block_data_cache.clone();
+
+		move |deny_unsafe, subscription_task_executor| {
+			let deps = crate::rpc::FullDeps {
+				backend: backend.clone(),
+				client: client.clone(),
+				command_sink: None,
+				deny_unsafe,
+				ethapi_cmd: ethapi_cmd.clone(),
+				filter_pool: filter_pool.clone(),
+				frontier_backend: frontier_backend.clone(),
+				graph: pool.pool().clone(),
+				pool: pool.clone(),
+				is_authority: collator,
+				max_past_logs,
+				fee_history_limit,
+				fee_history_cache: fee_history_cache.clone(),
+				network: network.clone(),
+				xcm_senders: None,
+				block_data_cache: block_data_cache.clone(),
+				overrides: overrides.clone(),
+			};
+			if ethapi_cmd.contains(&EthApi::Debug) || ethapi_cmd.contains(&EthApi::Trace) {
+				crate::rpc::create_full(
+					deps,
+					subscription_task_executor,
+					Some(crate::rpc::TracingConfig {
+						tracing_requesters: tracing_requesters.clone(),
+						trace_filter_max_count: rpc_config.ethapi_trace_max_count,
+					}),
+				)
+				.map_err(Into::into)
+			} else {
+				crate::rpc::create_full(deps, subscription_task_executor, None).map_err(Into::into)
+			}
+		}
+	};
+
+	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+		rpc_builder: Box::new(rpc_builder),
+		client: client.clone(),
+		transaction_pool: transaction_pool.clone(),
+		task_manager: &mut task_manager,
+		config: parachain_config,
+		keystore: params.keystore_container.sync_keystore(),
+		backend: backend.clone(),
+		network: network.clone(),
+		system_rpc_tx,
+		tx_handler_controller,
+		telemetry: telemetry.as_mut(),
+	})?;
+
+	if let Some(hwbench) = hwbench {
+		sc_sysinfo::print_hwbench(&hwbench);
+
+		if let Some(ref mut telemetry) = telemetry {
+			let telemetry_handle = telemetry.handle();
+			task_manager.spawn_handle().spawn(
+				"telemetry_hwbench",
+				None,
+				sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench),
+			);
+		}
+	}
+
+	let announce_block = {
+		let network = network.clone();
+		Arc::new(move |hash, data| network.announce_block(hash, data))
+	};
+
+	let relay_chain_slot_duration = Duration::from_secs(6);
+
+	if collator {
+		let parachain_consensus = build_consensus(
+			client.clone(),
+			backend.clone(),
+			prometheus_registry.as_ref(),
+			telemetry.as_ref().map(|t| t.handle()),
+			&task_manager,
+			relay_chain_interface.clone(),
+			transaction_pool,
+			network,
+			params.keystore_container.sync_keystore(),
+			force_authoring,
+		)?;
+
+		let spawner = task_manager.spawn_handle();
+
+		let params = StartCollatorParams {
+			para_id,
+			block_status: client.clone(),
+			announce_block,
+			client: client.clone(),
+			task_manager: &mut task_manager,
+			relay_chain_interface,
+			spawner,
+			parachain_consensus,
+			import_queue: import_queue_service,
+			collator_key: collator_key
+				.ok_or(sc_service::error::Error::Other("Collator Key is None".to_string()))?,
+			relay_chain_slot_duration,
+		};
+
+		start_collator(params).await?;
+	} else {
+		let params = StartFullNodeParams {
+			client: client.clone(),
+			announce_block,
+			task_manager: &mut task_manager,
+			para_id,
+			relay_chain_interface,
+			relay_chain_slot_duration,
+			import_queue: import_queue_service,
+		};
+
+		start_full_node(params)?;
+	}
+
+	start_network.start_network();
+
+	Ok((task_manager, client))
+}
+
+/// Start a normal parachain node.
+// Rustfmt wants to format the closure with space identation.
+#[rustfmt::skip]
+pub async fn start_node<RuntimeApi, Executor>(
+	parachain_config: Configuration,
+	polkadot_config: Configuration,
+	id: polkadot_primitives::v2::Id,
+	rpc_config: RpcConfig,
+	hwbench: Option<sc_sysinfo::HwBench>,
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>
+		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+		+ sp_api::Metadata<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_session::SessionKeys<Block>
+		+ fp_rpc::ConvertTransactionRuntimeApi<Block>
+		+ fp_rpc::EthereumRuntimeRPCApi<Block>
+		+ cumulus_primitives_core::CollectCollationInfo<Block>,
+	Executor: ExecutorT + 'static,
+{
 	start_node_impl(
 		parachain_config,
 		polkadot_config,
-		para_id,
+		id,
 		rpc_config,
 		hwbench,
 		|
@@ -476,13 +726,22 @@ where
 
 					let author = nimbus_primitives::InherentDataProvider;
 
-					let randomness = nimbus_primitives::InherentDataProvider;
+					let randomness = session_keys_primitives::InherentDataProvider;
 
 					Ok((time, parachain_inherent, author, randomness))
 				}
 			};
 			let client_clone = client.clone();
 			let keystore_clone = keystore.clone();
+			let maybe_provide_vrf_digest = move |nimbus_id: NimbusId, parent: Hash|
+				-> Option<sp_runtime::generic::DigestItem> {
+				moonbeam_vrf::vrf_pre_digest::<Block, FullClient<RuntimeApi, Executor>>(
+					&client_clone,
+					&keystore_clone,
+					nimbus_id,
+					parent,
+				)
+			};
 
 			Ok(NimbusConsensus::build(BuildNimbusConsensusParams {
 				para_id: id,
@@ -510,10 +769,8 @@ pub fn new_dev<RuntimeApi, Executor>(
 	hwbench: Option<sc_sysinfo::HwBench>,
 ) -> Result<TaskManager, ServiceError>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi:
+		ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::ApiExt<Block>
 		+ sp_block_builder::BlockBuilder<Block>
@@ -549,7 +806,7 @@ where
 				frontier_backend,
 				fee_history_cache,
 			),
-	} = new_partial::<RuntimeApi, Executor>(&mut config, true)?;
+	} = new_partial::<RuntimeApi, Executor>?;
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -592,33 +849,31 @@ where
 				cli_opt::Sealing::Instant => {
 					Box::new(
 						// This bit cribbed from the implementation of instant seal.
-						transaction_pool
-							.pool()
-							.validated_pool()
-							.import_notification_stream()
-							.map(|_| EngineCommand::SealNewBlock {
+						transaction_pool.pool().validated_pool().import_notification_stream().map(
+							|_| EngineCommand::SealNewBlock {
 								create_empty: false,
 								finalize: false,
 								parent_hash: None,
 								sender: None,
-							}),
+							},
+						),
 					)
-				}
+				},
 				cli_opt::Sealing::Manual => {
 					let (sink, stream) = futures::channel::mpsc::channel(1000);
 					// Keep a reference to the other end of the channel. It goes to the RPC.
 					command_sink = Some(sink);
 					Box::new(stream)
-				}
-				cli_opt::Sealing::Interval(millis) => Box::new(StreamExt::map(
-					Timer::interval(Duration::from_millis(millis)),
-					|_| EngineCommand::SealNewBlock {
-						create_empty: true,
-						finalize: false,
-						parent_hash: None,
-						sender: None,
-					},
-				)),
+				},
+				cli_opt::Sealing::Interval(millis) =>
+					Box::new(StreamExt::map(Timer::interval(Duration::from_millis(millis)), |_| {
+						EngineCommand::SealNewBlock {
+							create_empty: true,
+							finalize: false,
+							parent_hash: None,
+							sender: None,
+						}
+					})),
 			};
 
 		let select_chain = maybe_select_chain.expect(
@@ -700,7 +955,7 @@ where
 			}),
 		);
 	}
-	rpc::spawn_essential_tasks(rpc::SpawnTasksParams {
+	crate::rpc::spawn_essential_tasks(crate::rpc::SpawnTasksParams {
 		task_manager: &task_manager,
 		client: client.clone(),
 		substrate_backend: backend.clone(),
@@ -712,10 +967,10 @@ where
 	});
 	let ethapi_cmd = rpc_config.ethapi.clone();
 	let tracing_requesters =
-		if ethapi_cmd.contains(&EthApiCmd::Debug) || ethapi_cmd.contains(&EthApiCmd::Trace) {
-			rpc::tracing::spawn_tracing_tasks(
+		if ethapi_cmd.contains(&EthApi::Debug) || ethapi_cmd.contains(&EthApi::Trace) {
+			crate::tracing::spawn_tracing_tasks(
 				&rpc_config,
-				rpc::SpawnTasksParams {
+				crate::rpc::SpawnTasksParams {
 					task_manager: &task_manager,
 					client: client.clone(),
 					substrate_backend: backend.clone(),
@@ -727,10 +982,7 @@ where
 				},
 			)
 		} else {
-			rpc::tracing::RpcRequesters {
-				debug: None,
-				trace: None,
-			}
+			crate::tracing::RpcRequesters { debug: None, trace: None }
 		};
 
 	let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
@@ -753,7 +1005,7 @@ where
 		let block_data_cache = block_data_cache.clone();
 
 		move |deny_unsafe, subscription_task_executor| {
-			let deps = rpc::FullDeps {
+			let deps = crate::rpc::FullDeps {
 				backend: backend.clone(),
 				client: client.clone(),
 				command_sink: command_sink.clone(),
@@ -773,8 +1025,8 @@ where
 				block_data_cache: block_data_cache.clone(),
 			};
 
-			if ethapi_cmd.contains(&EthApiCmd::Debug) || ethapi_cmd.contains(&EthApiCmd::Trace) {
-				rpc::create_full(
+			if ethapi_cmd.contains(&EthApi::Debug) || ethapi_cmd.contains(&EthApi::Trace) {
+				crate::rpc::create_full(
 					deps,
 					subscription_task_executor,
 					Some(crate::rpc::TracingConfig {
@@ -784,7 +1036,7 @@ where
 				)
 				.map_err(Into::into)
 			} else {
-				rpc::create_full(deps, subscription_task_executor, None).map_err(Into::into)
+				crate::rpc::create_full(deps, subscription_task_executor, None).map_err(Into::into)
 			}
 		}
 	};
