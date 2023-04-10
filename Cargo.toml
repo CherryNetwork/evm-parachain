@@ -6,4 +6,9 @@ members = [
 	"node",
 	"runtime",
 	"primitives",
+	"precompiles/balances-erc20",
+	"precompiles/batch",
+	"precompiles/utils",
+	"precompiles/utils/macro",
+	"precompiles/utils/tests-external",
 ]

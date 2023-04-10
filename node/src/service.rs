@@ -3,14 +3,12 @@
 // std
 use std::{
 	collections::BTreeMap,
-	future,
 	sync::{Arc, Mutex},
 	time::Duration,
 };
 
 use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use fc_rpc_core::types::FeeHistoryCache;
-use futures::StreamExt;
 
 use cumulus_client_cli::CollatorOptions;
 // Local Runtime Types
