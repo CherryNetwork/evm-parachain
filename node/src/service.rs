@@ -7,6 +7,8 @@ use std::{
 	time::Duration,
 };
 
+use futures::StreamExt;
+
 use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use fc_rpc_core::types::FeeHistoryCache;
 
@@ -274,28 +276,28 @@ async fn start_node_impl(
 		task_manager: &mut task_manager,
 		config: parachain_config,
 		keystore: params.keystore_container.sync_keystore(),
-		backend,
+		backend: backend.clone(),
 		network: network.clone(),
 		system_rpc_tx,
 		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
 	})?;
 
-	// task_manager.spawn_essential_handle().spawn(
-	// 	"frontier-mapping-sync-worker",
-	// 	None,
-	// 	MappingSyncWorker::new(
-	// 		client.import_notification_stream(),
-	// 		Duration::new(12, 0),
-	// 		client.clone(),
-	// 		backend.clone(),
-	// 		frontier_backend.clone(),
-	// 		3,
-	// 		0,
-	// 		SyncStrategy::Parachain,
-	// 	)
-	// 	.for_each(|()| future::ready(())),
-	// );
+	task_manager.spawn_essential_handle().spawn(
+		"frontier-mapping-sync-worker",
+		None,
+		MappingSyncWorker::new(
+			client.import_notification_stream(),
+			Duration::new(12, 0),
+			client.clone(),
+			backend.clone(),
+			frontier_backend.clone(),
+			3,
+			0,
+			SyncStrategy::Parachain,
+		)
+		.for_each(|()| futures::future::ready(())),
+	);
 
 	if let Some(hwbench) = hwbench {
 		sc_sysinfo::print_hwbench(&hwbench);
