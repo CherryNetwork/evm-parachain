@@ -15,7 +15,7 @@ use fp_rpc::TransactionStatus;
 use frame_support::traits::FindAuthor;
 use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
 use pallet_evm::{
-	Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator,
+	Account as EVMAccount, EnsureAddressTruncated, FeeCalculator,
 	HashedAddressMapping, Runner,
 };
 pub use pallet_transaction_payment::Multiplier;
@@ -192,8 +192,8 @@ impl_opaque_keys! {
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("cherry-evm-testnet"),
 	impl_name: create_runtime_str!("cherry-evm-testnet"),
-	authoring_version: 1,
-	spec_version: 3,
+	authoring_version: 2,
+	spec_version: 1,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -427,8 +427,8 @@ impl pallet_evm::Config for Runtime {
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type WeightPerGas = WeightPerGas;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
-	type CallOrigin = EnsureAddressRoot<AccountId>;
-	type WithdrawOrigin = EnsureAddressNever<AccountId>;
+	type CallOrigin = EnsureAddressTruncated;
+	type WithdrawOrigin = EnsureAddressTruncated;
 	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
