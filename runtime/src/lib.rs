@@ -510,7 +510,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
+	pub const Period: u32 = 4 * HOURS;
 	pub const Offset: u32 = 0;
 }
 
