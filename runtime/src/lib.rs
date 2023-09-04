@@ -190,8 +190,8 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("cherry-evm-testnet"),
-	impl_name: create_runtime_str!("cherry-evm-testnet"),
+	spec_name: create_runtime_str!("cherry-evm-mainnet"),
+	impl_name: create_runtime_str!("cherry-evm-mainnet"),
 	authoring_version: 2,
 	spec_version: 1,
 	impl_version: 0,
